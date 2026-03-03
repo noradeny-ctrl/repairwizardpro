@@ -1,0 +1,8 @@
+{
+  "name": "Repair Wizard ",
+  "description": "Elite AI technical consultant and automotive import broker specializing in diagnostics, VIN scanning, and USA-to-Kurdistan vehicle imports.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

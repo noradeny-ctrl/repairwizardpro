@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    @apply bg-[#0a0f1e] text-slate-100;
+  }
+}
+
+.markdown-body {
+  @apply text-slate-300 leading-relaxed;
+}
+
+.markdown-body h1 {
+  @apply text-3xl font-black tracking-tighter text-white mb-6 mt-8;
+}
+
+.markdown-body h2 {
+  @apply text-xl font-black tracking-tight text-cyan-400 mb-4 mt-6 uppercase;
+}
+
+.markdown-body h3 {
+  @apply text-lg font-bold text-white mb-3 mt-5;
+}
+
+.markdown-body p {
+  @apply mb-4;
+}
+
+.markdown-body ul, .markdown-body ol {
+  @apply mb-6 pl-5 space-y-2;
+}
+
+.markdown-body li {
+  @apply list-disc;
+}
+
+.markdown-body code {
+  @apply font-mono text-cyan-300 bg-cyan-500/10 px-1.5 py-0.5 rounded border border-cyan-500/20;
+}
+
+.markdown-body pre {
+  @apply bg-slate-900/80 border border-white/10 rounded-2xl p-4 mb-6 overflow-x-auto font-mono text-sm;
+}
+
+.markdown-body pre code {
+  @apply bg-transparent border-none p-0 text-slate-300;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-cyan-500/50 pl-4 italic text-slate-400 mb-6;
+}
+
+.markdown-body hr {
+  @apply border-white/5 my-8;
+}
+
+.markdown-body strong {
+  @apply font-bold text-white;
+}
+
+.markdown-body em {
+  @apply italic;
+}
