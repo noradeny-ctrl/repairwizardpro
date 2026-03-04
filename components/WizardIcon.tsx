@@ -48,16 +48,55 @@ const WizardIcon: React.FC<{ size?: number; className?: string }> = ({ size, cla
         <stop offset="40%" stopColor="#FEB109" stopOpacity="0.3" />
         <stop offset="100%" stopColor="transparent" />
       </radialGradient>
+      
+      <pattern id="tech-grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00F0FF" strokeWidth="0.2" strokeOpacity="0.2" />
+      </pattern>
+      <linearGradient id="paint-reflection" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="rgba(255, 255, 255, 0.3)" />
+        <stop offset="30%" stopColor="rgba(255, 255, 255, 0.1)" />
+        <stop offset="70%" stopColor="rgba(0, 0, 0, 0.2)" />
+        <stop offset="100%" stopColor="rgba(0, 0, 0, 0.4)" />
+      </linearGradient>
+
+      <radialGradient id="lens-flare" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="white" stopOpacity="0.9" />
+        <stop offset="20%" stopColor="#00F0FF" stopOpacity="0.4" />
+        <stop offset="100%" stopColor="transparent" />
+      </radialGradient>
+      <radialGradient id="ground-shadow" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stopColor="black" stopOpacity="0.6" />
+        <stop offset="100%" stopColor="transparent" />
+      </radialGradient>
     </defs>
 
-    {/* Hexagonal Tech-Crest Shield */}
+    {/* Hexagonal Tech-Crest Shield - Beveled Physical Look */}
     <g filter="url(#master-bloom)">
+      {/* Outer Rim */}
+      <path 
+        d="M100 8L182 49V151L100 192L18 151V49L100 8Z" 
+        fill="#1a1a1a" 
+      />
+      {/* Main Shield */}
       <path 
         d="M100 10L180 50V150L100 190L20 150V50L100 10Z" 
         stroke="url(#gold-master)" 
         strokeWidth="6" 
-        fill="rgba(10, 14, 20, 0.8)"
+        fill="rgba(10, 14, 20, 0.9)"
         strokeLinejoin="round"
+      />
+      {/* Tech Grid Background */}
+      <path 
+        d="M100 10L180 50V150L100 190L20 150V50L100 10Z" 
+        fill="url(#tech-grid)"
+      />
+      {/* Inner Bevel */}
+      <path 
+        d="M100 14L176 52V148L100 186L24 148V52L100 14Z" 
+        stroke="white" 
+        strokeWidth="0.5" 
+        strokeOpacity="0.1"
+        fill="none"
       />
       {/* Glowing Circuitry Patterns on Shield */}
       <g stroke="#FFD700" strokeWidth="1" strokeOpacity="0.4">
@@ -79,12 +118,18 @@ const WizardIcon: React.FC<{ size?: number; className?: string }> = ({ size, cla
       <circle cx="100" cy="95" r="1.2" fill="white" />
     </g>
 
+    {/* Ground Reflection & Shadow */}
+    <ellipse cx="100" cy="195" rx="70" ry="10" fill="url(#ground-shadow)" />
+    <g opacity="0.3">
+      <ellipse cx="100" cy="195" rx="60" ry="8" fill="url(#cyan-master)" filter="blur(10px)" />
+    </g>
+
     {/* Majestic Sun Burst (Background) */}
-    <g filter="url(#master-bloom)" opacity="0.7">
+    <g filter="url(#master-bloom)" opacity="0.8">
       {/* Central Glow */}
       <circle cx="100" cy="120" r="40" fill="url(#sun-burst)" />
       {/* Radiating Sun Rays */}
-      <g stroke="#FEB109" strokeWidth="0.5" strokeOpacity="0.4">
+      <g stroke="#FEB109" strokeWidth="0.5" strokeOpacity="0.5">
         {[...Array(21)].map((_, i) => (
           <line 
             key={i} 
@@ -97,52 +142,54 @@ const WizardIcon: React.FC<{ size?: number; className?: string }> = ({ size, cla
       </g>
     </g>
 
-    {/* Hyper-Realistic BMW Front Silhouette */}
+    {/* Hyper-Realistic Tesla-Style Front Silhouette */}
     <g filter="url(#master-bloom)" opacity="0.95">
-      {/* Upper Body & Roofline */}
+      {/* Upper Body & Roofline - Sleeker Tesla Curve */}
       <path 
-        d="M55 130C55 130 65 105 100 105C135 105 145 130 145 130" 
+        d="M50 135C50 135 60 100 100 100C140 100 150 135 150 135" 
         stroke="url(#cyan-master)" 
         strokeWidth="2" 
         fill="none"
         strokeLinecap="round"
       />
-      {/* Windshield & Pillars */}
+      {/* Windshield & Pillars - Realistic Glass Effect */}
       <path 
-        d="M62 130C62 130 70 112 100 112C130 112 138 130 138 130" 
-        fill="rgba(0, 240, 255, 0.1)" 
+        d="M58 135C58 135 68 108 100 108C132 108 142 135 142 135" 
+        fill="url(#glass-gradient)" 
         stroke="url(#cyan-master)" 
         strokeWidth="1"
       />
+      <linearGradient id="glass-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="rgba(0, 240, 255, 0.2)" />
+        <stop offset="50%" stopColor="rgba(255, 255, 255, 0.4)" />
+        <stop offset="100%" stopColor="rgba(0, 240, 255, 0.1)" />
+      </linearGradient>
       
-      {/* Main Front Body Panel */}
+      {/* Main Front Body Panel - Smooth Tesla Paint */}
       <path 
-        d="M40 165C40 165 42 135 55 130H145C158 135 160 165 160 165" 
+        d="M35 170C35 170 38 135 50 135H150C162 135 165 170 165 170" 
         fill="url(#cyan-master)" 
-        fillOpacity="0.4"
+      />
+      <path 
+        d="M35 170C35 170 38 135 50 135H150C162 135 165 170 165 170" 
+        fill="url(#paint-reflection)" 
       />
       
-      {/* Hood Lines (V-Shape) */}
-      <path d="M85 130L92 150M115 130L108 150" stroke="white" strokeWidth="0.5" strokeOpacity="0.3" />
+      {/* Hood Lines - Minimalist Tesla Creases */}
+      <path d="M75 135L85 155" stroke="white" strokeWidth="0.6" strokeOpacity="0.3" />
+      <path d="M125 135L115 155" stroke="white" strokeWidth="0.6" strokeOpacity="0.3" />
 
-      {/* BMW Kidney Grille - High Detail */}
-      <g transform="translate(82, 152)">
-        {/* Grille Outlines */}
-        <rect x="0" y="0" width="16" height="14" rx="5" stroke="url(#cyan-master)" strokeWidth="1.5" fill="#000" fillOpacity="0.8" />
-        <rect x="20" y="0" width="16" height="14" rx="5" stroke="url(#cyan-master)" strokeWidth="1.5" fill="#000" fillOpacity="0.8" />
-        {/* Vertical Slats */}
-        <path d="M4 3V11M8 3V11M12 3V11" stroke="white" strokeWidth="0.8" strokeOpacity="0.4" />
-        <path d="M24 3V11M28 3V11M32 3V11" stroke="white" strokeWidth="0.8" strokeOpacity="0.4" />
-      </g>
-
-      {/* Kurdish Flag Emblem on Hood */}
-      <g transform="translate(100, 145)">
+      {/* Kurdish Flag Emblem on Hood - 3D Badge Look */}
+      <g transform="translate(100, 155)">
+        {/* Badge Rim (Chrome) */}
+        <circle r="6" fill="url(#gold-master)" />
+        <circle r="5.2" fill="#111" />
         {/* Flag Base (Circle) */}
-        <circle r="5" fill="white" stroke="url(#gold-master)" strokeWidth="0.5" />
-        <clipPath id="flag-clip">
+        <circle r="5" fill="white" />
+        <clipPath id="flag-clip-3d">
           <circle r="5" />
         </clipPath>
-        <g clipPath="url(#flag-clip)">
+        <g clipPath="url(#flag-clip-3d)">
           <rect x="-5" y="-5" width="10" height="3.33" fill="#ED2024" /> {/* Red */}
           <rect x="-5" y="-1.67" width="10" height="3.33" fill="white" /> {/* White */}
           <rect x="-5" y="1.66" width="10" height="3.34" fill="#278E43" /> {/* Green */}
@@ -153,29 +200,57 @@ const WizardIcon: React.FC<{ size?: number; className?: string }> = ({ size, cla
               <line key={i} x1="0" y1="0" x2="0" y2="-2.5" transform={`rotate(${i * (360 / 21)})`} />
             ))}
           </g>
+          {/* Badge Reflection */}
+          <path d="M-4 -4C-4 -4 -2 -5 2 -3" stroke="white" strokeWidth="0.5" strokeOpacity="0.6" fill="none" />
         </g>
       </g>
 
-      {/* "Angel Eye" Headlights - Multi-Element */}
+      {/* Tesla-Style Sleek LED Headlights */}
       <g>
         {/* Left Headlight */}
-        <path d="M45 145L75 140L78 150L48 155Z" fill="rgba(0,0,0,0.5)" />
-        <circle cx="58" cy="148" r="3" stroke="white" strokeWidth="1" fill="none" filter="url(#master-bloom)" />
-        <circle cx="70" cy="145" r="3" stroke="white" strokeWidth="1" fill="none" filter="url(#master-bloom)" />
+        <path 
+          d="M40 145C40 145 55 140 80 148L78 152C78 152 55 145 42 150Z" 
+          fill="#050505" 
+          stroke="url(#cyan-master)" 
+          strokeWidth="0.5" 
+        />
+        <path 
+          d="M45 147C45 147 60 143 75 149" 
+          stroke="#00F0FF" 
+          strokeWidth="1.5" 
+          fill="none" 
+          filter="url(#master-bloom)" 
+        />
+        <circle cx="50" cy="147" r="1" fill="white" filter="url(#master-bloom)" />
+        
         {/* Right Headlight */}
-        <path d="M155 145L125 140L122 150L152 155Z" fill="rgba(0,0,0,0.5)" />
-        <circle cx="142" cy="148" r="3" stroke="white" strokeWidth="1" fill="none" filter="url(#master-bloom)" />
-        <circle cx="130" cy="145" r="3" stroke="white" strokeWidth="1" fill="none" filter="url(#master-bloom)" />
+        <path 
+          d="M160 145C160 145 145 140 120 148L122 152C122 152 145 145 158 150Z" 
+          fill="#050505" 
+          stroke="url(#cyan-master)" 
+          strokeWidth="0.5" 
+        />
+        <path 
+          d="M155 147C155 147 140 143 125 149" 
+          stroke="#00F0FF" 
+          strokeWidth="1.5" 
+          fill="none" 
+          filter="url(#master-bloom)" 
+        />
+        <circle cx="150" cy="147" r="1" fill="white" filter="url(#master-bloom)" />
       </g>
 
-      {/* Lower Bumper & Air Intakes */}
-      <path d="M40 165H160V175C160 180 155 185 150 185H50C45 185 40 180 40 175V165Z" fill="url(#cyan-master)" fillOpacity="0.2" />
-      <rect x="50" y="170" width="25" height="10" rx="2" fill="#000" fillOpacity="0.6" />
-      <rect x="125" y="170" width="25" height="10" rx="2" fill="#000" fillOpacity="0.6" />
-      <rect x="80" y="172" width="40" height="8" rx="2" fill="#000" fillOpacity="0.6" />
+      {/* Lower Bumper & Aggressive Air Intakes */}
+      <path d="M40 165H160V180C160 185 155 190 150 190H50C45 190 40 185 40 180V165Z" fill="url(#cyan-master)" fillOpacity="0.2" />
+      {/* Side Intakes */}
+      <path d="M45 170H70V182C70 182 45 182 45 175V170Z" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
+      <path d="M155 170H130V182C130 182 155 182 155 175V170Z" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
+      {/* Center Intake */}
+      <rect x="78" y="172" width="44" height="12" rx="3" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
       
-      {/* Front Splitter */}
-      <path d="M35 185H165V188H35V185Z" fill="url(#cyan-master)" />
+      {/* Front Splitter - Carbon Fiber Look */}
+      <path d="M35 190H165V194H35V190Z" fill="#111" stroke="url(#cyan-master)" strokeWidth="0.5" />
+      <path d="M35 191H165" stroke="white" strokeWidth="0.2" strokeOpacity="0.2" />
       
       {/* Tires/Wheels (Peeking from bottom) */}
       <rect x="42" y="180" width="15" height="10" fill="#111" />
