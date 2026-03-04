@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
+import { Globe } from 'lucide-react';
 import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import ResultView from './components/ResultView';
@@ -234,12 +235,7 @@ const App: React.FC = () => {
     <div className="mt-12 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10"><PartnerBadge size={100} /></div>
       <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">💎 VERIFIED PARTNER PROGRAM</h3>
-      <p className="text-sm text-slate-300 leading-relaxed mb-4">Join our elite network of certified "Ustas" and technical wizards.</p>
-      <div className="flex items-center gap-2 mb-6">
-        <span className="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
-          Account Fee: $500
-        </span>
-      </div>
+      <p className="text-sm text-slate-300 leading-relaxed mb-6">Join our elite network of certified "Ustas" and technical wizards.</p>
       <div className="flex flex-wrap gap-4">
         <a href="https://wa.me/16153392046" target="_blank" rel="noopener noreferrer" className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors">Join via WhatsApp</a>
         <a href="https://repairwizard.net" target="_blank" rel="noopener noreferrer" className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors">Visit repairwizard.net</a>
@@ -249,7 +245,7 @@ const App: React.FC = () => {
 
   if (!state.isStarted) {
     return (
-      <div className="relative flex flex-col items-center justify-center h-full bg-[#0a0f1e] text-white p-8 animate-fade-in overflow-hidden">
+      <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden">
         <SunBackground />
         <DraggableLogo />
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
@@ -265,12 +261,15 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0f1e] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
       <SunBackground />
-      <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-slate-900/80 backdrop-blur-ultra sticky top-0 z-50">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setState(prev => ({...prev, isStarted: false}))}>
-          <WizardIcon size={36} />
-          <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-cyan-400">REPAIR WIZARD</h1>
+      <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
+        <div 
+          className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
+          onClick={() => setState(prev => ({...prev, isStarted: false}))}
+        >
+          <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
+          <Globe className="w-5 h-5 text-cyan-400" />
         </div>
         <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
           {state.mode}
