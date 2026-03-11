@@ -2,7 +2,7 @@
 import { RegionMode } from "../types";
 import { WizardError } from "./geminiService";
 
-export type ErrorCategory = 'network' | 'safety' | 'quota' | 'auth' | 'permission' | 'generic' | 'validation';
+export type ErrorCategory = 'network' | 'safety' | 'quota' | 'permission' | 'generic' | 'validation';
 
 export interface AppError {
   category: ErrorCategory;
@@ -28,12 +28,6 @@ const ERROR_MESSAGES: Record<ErrorCategory, Record<RegionMode, string>> = {
     [RegionMode.BADINAN]: "پڕۆتۆکۆلا سلامەتیێ هاتە گرتن. داخوازى دژی رێنمایانە.",
     [RegionMode.SORANI]: "پڕۆتۆکۆڵی سەلامەتی گیرا. داواکارییەکە دژی ڕێنماییەکانە.",
     [RegionMode.ARABIC]: "تم حظر بروتوكول السلامة. الطلب ينتهك إرشادات السلامة."
-  },
-  auth: {
-    [RegionMode.WESTERN]: "Identity check failed. Please login again.",
-    [RegionMode.BADINAN]: "پشکنینا ناسنامێ ب سەر نەکەفت. هیڤیە دوبارە بچە ژوور.",
-    [RegionMode.SORANI]: "پشکنینی ناسنامە سەرکەوتوو نەبوو. تکایە دووبارە بچۆ ژوورەوە.",
-    [RegionMode.ARABIC]: "فشل التحقق من الهوية. يرجى تسجيل الدخول مرة أخرى."
   },
   permission: {
     [RegionMode.WESTERN]: "Access Denied. You don't have permission for this action.",
@@ -62,8 +56,6 @@ export function formatAppError(error: any, mode: RegionMode): string {
     category = error.category as ErrorCategory;
   } else if (error?.message?.includes('permission-denied')) {
     category = 'permission';
-  } else if (error?.message?.includes('unauthenticated') || error?.message?.includes('auth/')) {
-    category = 'auth';
   } else if (error?.message?.includes('quota')) {
     category = 'quota';
   } else if (error?.message?.includes('offline') || !navigator.onLine) {

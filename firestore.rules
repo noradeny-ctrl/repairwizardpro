@@ -5,20 +5,11 @@ service cloud.firestore {
     // Assumed Data Model
     // ===============================================================
     //
-    // Collection: users
-    // Document ID: userId (UID)
-    // Fields:
-    //   - uid: string (required)
-    //   - email: string (required, email format)
-    //   - displayName: string (optional)
-    //   - photoURL: string (optional)
-    //   - createdAt: string (optional, date-time format)
-    //
     // Collection: repairs
     // Document ID: repairId
     // Fields:
     //   - id: string (required)
-    //   - userId: string (required, matches owner)
+    //   - userId: string (required, 'anonymous')
     //   - vehicleInfo: map (optional)
     //   - issueDescription: string (required)
     //   - aiDiagnosis: string (optional)
@@ -27,44 +18,13 @@ service cloud.firestore {
     //
     // ===============================================================
 
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.userId;
-    }
-
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-    }
-
     function isValidDateString(dateStr) {
       return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
     }
 
-    // ===============================================================
-    // Domain Validators
-    // ===============================================================
-    function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email']) &&
-             data.uid == request.auth.uid &&
-             isValidEmail(data.email) &&
-             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
-             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() < 500)) &&
-             (!('createdAt' in data) || isValidDateString(data.createdAt));
-    }
-
     function isValidRepair(data) {
       return data.keys().hasAll(['id', 'userId', 'issueDescription', 'status']) &&
-             data.userId == request.auth.uid &&
+             data.userId == 'anonymous' &&
              data.id is string &&
              data.issueDescription is string && data.issueDescription.size() < 5000 &&
              data.status in ['pending', 'diagnosed', 'repaired'] &&
@@ -72,25 +32,16 @@ service cloud.firestore {
              (!('createdAt' in data) || isValidDateString(data.createdAt));
     }
 
-    // ===============================================================
-    // Rules
-    // ===============================================================
     // Rules for test connection
     match /test/connection {
       allow read: if true;
     }
 
-    match /users/{userId} {
-      allow read: if isOwner(userId);
-      allow create: if isOwner(userId) && isValidUser(request.resource.data);
-      allow update: if isOwner(userId) && isValidUser(request.resource.data);
-    }
-
     match /repairs/{repairId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated() && isValidRepair(request.resource.data);
-      allow update: if isDocOwner() && isValidRepair(request.resource.data);
-      allow delete: if isDocOwner();
+      allow read: if true;
+      allow create: if isValidRepair(request.resource.data);
+      allow update: if false; // No updates for now
+      allow delete: if false; // No deletes for now
     }
 
     // Default deny

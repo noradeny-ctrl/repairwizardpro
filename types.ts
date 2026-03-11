@@ -1,4 +1,3 @@
-import { User } from 'firebase/auth';
 
 export enum RegionMode {
   WESTERN = 'English',
@@ -76,6 +75,4 @@ export interface AppState {
   image?: string;
   result?: AnalysisResult;
   error?: string;
-  user?: User | null;
-  isAuthReady?: boolean;
 }
