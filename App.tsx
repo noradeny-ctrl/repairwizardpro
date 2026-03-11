@@ -3,6 +3,7 @@ import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from '
 import { Globe, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
+import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardDirectView from './components/WizardDirectView';
 import WizardIcon from './components/WizardIcon';
@@ -241,7 +242,7 @@ const App: React.FC = () => {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (err: any) {
-      setState(prev => ({ ...prev, error: "Login failed: " + err.message }));
+      setState(prev => ({ ...prev, error: formatAppError(err, state.mode) }));
     }
   };
 
@@ -249,7 +250,7 @@ const App: React.FC = () => {
     try {
       await signOut(auth);
     } catch (err: any) {
-      setState(prev => ({ ...prev, error: "Logout failed: " + err.message }));
+      setState(prev => ({ ...prev, error: formatAppError(err, state.mode) }));
     }
   };
 
@@ -271,20 +272,6 @@ const App: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (e) => setState(prev => ({ ...prev, image: e.target?.result as string, error: undefined }));
     reader.readAsDataURL(file);
-  }, []);
-
-  const getErrorMessage = useCallback((error: any, mode: RegionMode) => {
-    if (error instanceof WizardError) {
-      if (mode !== RegionMode.WESTERN) {
-        switch (error.category) {
-          case 'network': return mode === RegionMode.ARABIC ? "أنت غير متصل بالإنترنت." : "تۆ پەیوەست نیت بە ئینتەرنێتەوە.";
-          case 'quota': return mode === RegionMode.ARABIC ? "طلبات كثيرة جداً." : "داواکارییەکان زۆرن.";
-          default: return mode === RegionMode.ARABIC ? "حدث خطأ ما." : "کێشەیەک ڕوویدا.";
-        }
-      }
-      return error.message;
-    }
-    return "An unexpected error occurred.";
   }, []);
 
   const startAnalysis = useCallback(async () => {
@@ -321,9 +308,9 @@ const App: React.FC = () => {
 
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
-      setState(prev => ({ ...prev, isAnalyzing: false, error: getErrorMessage(err, state.mode) }));
+      setState(prev => ({ ...prev, isAnalyzing: false, error: formatAppError(err, state.mode) }));
     }
-  }, [state.userInput, state.image, state.mode, state.user, getErrorMessage]);
+  }, [state.userInput, state.image, state.mode, state.user]);
 
   const resetApp = useCallback(() => {
     setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, image: undefined, userInput: '', error: undefined }));

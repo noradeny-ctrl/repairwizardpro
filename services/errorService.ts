@@ -1,0 +1,74 @@
+
+import { RegionMode } from "../types";
+import { WizardError } from "./geminiService";
+
+export type ErrorCategory = 'network' | 'safety' | 'quota' | 'auth' | 'permission' | 'generic' | 'validation';
+
+export interface AppError {
+  category: ErrorCategory;
+  message: string;
+  originalError?: any;
+}
+
+const ERROR_MESSAGES: Record<ErrorCategory, Record<RegionMode, string>> = {
+  network: {
+    [RegionMode.WESTERN]: "Link lost. Check your internet connection.",
+    [RegionMode.BADINAN]: "پەیوەندی نەما. هێلا ئینتەرنێتێ پشکنین بکە.",
+    [RegionMode.SORANI]: "پەیوەندی نەما. هێڵی ئینتەرنێتەکەت بپشکنە.",
+    [RegionMode.ARABIC]: "فقد الاتصال. يرجى التحقق من اتصال الإنترنت."
+  },
+  quota: {
+    [RegionMode.WESTERN]: "Wizard is busy. Too many requests, please wait.",
+    [RegionMode.BADINAN]: "جادووگەر مژوولە. داخوازى زۆرن، هیڤیە چاڤەرێ بە.",
+    [RegionMode.SORANI]: "جادووگەر سەرقاڵە. داواکاری زۆرە، تکایە چاوەڕێ بکە.",
+    [RegionMode.ARABIC]: "المعالج مشغول. طلبات كثيرة جداً، يرجى الانتظار."
+  },
+  safety: {
+    [RegionMode.WESTERN]: "Safety Protocol Blocked. Request violates safety guidelines.",
+    [RegionMode.BADINAN]: "پڕۆتۆکۆلا سلامەتیێ هاتە گرتن. داخوازى دژی رێنمایانە.",
+    [RegionMode.SORANI]: "پڕۆتۆکۆڵی سەلامەتی گیرا. داواکارییەکە دژی ڕێنماییەکانە.",
+    [RegionMode.ARABIC]: "تم حظر بروتوكول السلامة. الطلب ينتهك إرشادات السلامة."
+  },
+  auth: {
+    [RegionMode.WESTERN]: "Identity check failed. Please login again.",
+    [RegionMode.BADINAN]: "پشکنینا ناسنامێ ب سەر نەکەفت. هیڤیە دوبارە بچە ژوور.",
+    [RegionMode.SORANI]: "پشکنینی ناسنامە سەرکەوتوو نەبوو. تکایە دووبارە بچۆ ژوورەوە.",
+    [RegionMode.ARABIC]: "فشل التحقق من الهوية. يرجى تسجيل الدخول مرة أخرى."
+  },
+  permission: {
+    [RegionMode.WESTERN]: "Access Denied. You don't have permission for this action.",
+    [RegionMode.BADINAN]: "دەستهەلات نینە. تە مۆلەت نینە بۆ ڤێ کارى.",
+    [RegionMode.SORANI]: "دەسەڵات نییە. تۆ مۆڵەتت نییە بۆ ئەم کارە.",
+    [RegionMode.ARABIC]: "تم رفض الوصول. ليس لديك إذن لهذا الإجراء."
+  },
+  validation: {
+    [RegionMode.WESTERN]: "Input invalid. Please provide more details or a clearer image.",
+    [RegionMode.BADINAN]: "پێزانین نە دروستن. هیڤیە پتر روون بکە یان وێنەکا روونتر بدە.",
+    [RegionMode.SORANI]: "زانیارییەکان ناڕاستن. تکایە زیاتر ڕوونی بکەرەوە یان وێنەیەکی ڕوونتر بدە.",
+    [RegionMode.ARABIC]: "البيانات غير صالحة. يرجى تقديم مزيد من التفاصيل أو صورة أوضح."
+  },
+  generic: {
+    [RegionMode.WESTERN]: "Internal system fault. The Wizard is recalibrating.",
+    [RegionMode.BADINAN]: "خەلەتیەکا ناڤخۆیی. جادووگەر یێ خۆ رێک دئێخیتەڤە.",
+    [RegionMode.SORANI]: "هەڵەیەکی ناوخۆیی. جادووگەر خەریکی ڕێکخستنەوەی خۆیەتی.",
+    [RegionMode.ARABIC]: "خطأ داخلي في النظام. المعالج يقوم بإعادة المعايرة."
+  }
+};
+
+export function formatAppError(error: any, mode: RegionMode): string {
+  let category: ErrorCategory = 'generic';
+
+  if (error instanceof WizardError) {
+    category = error.category as ErrorCategory;
+  } else if (error?.message?.includes('permission-denied')) {
+    category = 'permission';
+  } else if (error?.message?.includes('unauthenticated') || error?.message?.includes('auth/')) {
+    category = 'auth';
+  } else if (error?.message?.includes('quota')) {
+    category = 'quota';
+  } else if (error?.message?.includes('offline') || !navigator.onLine) {
+    category = 'network';
+  }
+
+  return ERROR_MESSAGES[category][mode] || ERROR_MESSAGES.generic[mode];
+}
