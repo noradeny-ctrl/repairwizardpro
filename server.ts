@@ -10,6 +10,7 @@ import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import admin from 'firebase-admin';
+import analyzeHandler from './api/analyze.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -109,6 +110,8 @@ app.get('/api/admin/health', async (req, res) => {
     res.status(500).json({ status: 'error', message: error.message });
   }
 });
+
+app.post('/api/analyze', analyzeHandler);
 
 app.post('/api/auth/signup', async (req, res) => {
   try {
