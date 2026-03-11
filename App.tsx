@@ -288,8 +288,8 @@ const App: React.FC = () => {
   }, [nearbyPartners, state.userInput, state.result]);
 
   const PartnerProgramSection = useMemo(() => (
-    <div className="mt-12 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
-      <div className="absolute top-0 right-0 p-4 opacity-10"><PartnerBadge size={100} /></div>
+    <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
+      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PartnerBadge size={100} /></div>
       <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">💎 VERIFIED PARTNER PROGRAM</h3>
       <p className="text-sm text-slate-300 leading-relaxed mb-6">Join our elite network of certified "Ustas" and technical wizards.</p>
       <div className="flex flex-wrap gap-4">
@@ -352,8 +352,8 @@ const App: React.FC = () => {
         {state.error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center text-red-400 text-xs font-bold">{state.error}</div>}
         {PartnerProgramSection}
         
-        <div className="mt-6 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">🇺🇸</div>
+        <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
+          <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl group-hover:opacity-20 transition-opacity">🇺🇸</div>
           <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">🇺🇸 WIZARD DIRECT IMPORT</h3>
           <p className="text-sm text-slate-300 leading-relaxed mb-6">Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil.</p>
           <div className="flex flex-wrap gap-4">
