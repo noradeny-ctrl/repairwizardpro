@@ -1,10 +1,9 @@
 {
-  "projectId": "gen-lang-client-0389878571",
-  "appId": "1:351391857091:web:4d0098087a913ba4bda576",
-  "apiKey": "AIzaSyD_-JGbZgkSYIt0-No9xNHkeQJ9GyjTXn4",
-  "authDomain": "gen-lang-client-0389878571.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-0492c3d3-7b20-4b4b-a846-aee17c2e2b62",
-  "storageBucket": "gen-lang-client-0389878571.firebasestorage.app",
-  "messagingSenderId": "351391857091",
-  "measurementId": ""
+  "projectId": "repairwizardpro",
+  "appId": "1:812743179098:web:1301ccf23a6312e772d163",
+  "apiKey": "AIzaSyCRVkNogtcvYE3Q024FIFp3aOm1jv9xH54",
+  "authDomain": "repairwizardpro.firebaseapp.com",
+  "storageBucket": "repairwizardpro.firebasestorage.app",
+  "messagingSenderId": "812743179098",
+  "measurementId": "G-518NY04BEW"
 }

@@ -1,6 +1,6 @@
 
 import { collection, getDocs } from "firebase/firestore";
-import { db } from "./components/firebaseConfig";
+import { db } from "./firebase";
 import { Partner } from "./types";
 // Static fallback data for immediate load performance (Optimization)
 const staticPartners: Partner[] = [
