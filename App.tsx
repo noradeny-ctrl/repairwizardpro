@@ -12,6 +12,7 @@ import partnersData, { fetchActivePartners } from './partners';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { Analytics } from '@vercel/analytics/react';
 
 enum OperationType {
   CREATE = 'create',
@@ -472,6 +473,7 @@ const App: React.FC = () => {
       {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
       {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+      <Analytics />
     </div>
   );
 };
