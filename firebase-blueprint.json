@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user information and preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique identifier for the user." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "photoURL": { "type": "string", "description": "The user's profile picture URL." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the profile was created." }
+      },
+      "required": ["uid", "email"]
+    },
+    "RepairRecord": {
+      "title": "Repair Record",
+      "description": "Stores details about a vehicle repair.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The unique identifier for the repair record." },
+        "userId": { "type": "string", "description": "The ID of the user who owns this record." },
+        "vehicleInfo": {
+          "type": "object",
+          "properties": {
+            "make": { "type": "string" },
+            "model": { "type": "string" },
+            "year": { "type": "integer" }
+          }
+        },
+        "issueDescription": { "type": "string", "description": "Description of the vehicle's problem." },
+        "aiDiagnosis": { "type": "string", "description": "The AI-generated diagnosis." },
+        "status": { "type": "string", "enum": ["pending", "diagnosed", "repaired"], "description": "Current status of the repair." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "issueDescription"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document."
+    },
+    "/repairs/{repairId}": {
+      "schema": "RepairRecord",
+      "description": "Repair record document."
+    }
+  }
+}

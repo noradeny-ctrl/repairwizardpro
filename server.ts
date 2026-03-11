@@ -15,7 +15,7 @@ const __dirname = dirname(__filename);
 
 const prisma = new PrismaClient();
 const app = express();
-const port = (process.env.PORT as any) || 8080;
+const port = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
 
 // Extend Express Request type to include user

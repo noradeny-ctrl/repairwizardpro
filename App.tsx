@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, LogIn, LogOut, User as UserIcon } from 'lucide-react';
 import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import ResultView from './components/ResultView';
@@ -8,6 +8,60 @@ import WizardDirectView from './components/WizardDirectView';
 import WizardIcon from './components/WizardIcon';
 import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
+import { auth, db } from './firebase';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDocFromServer } from 'firebase/firestore';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId: string | undefined;
+    email: string | null | undefined;
+    emailVerified: boolean | undefined;
+    isAnonymous: boolean | undefined;
+    tenantId: string | null | undefined;
+    providerInfo: {
+      providerId: string;
+      displayName: string | null;
+      email: string | null;
+      photoUrl: string | null;
+    }[];
+  }
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData.map(provider => ({
+        providerId: provider.providerId,
+        displayName: provider.displayName,
+        email: provider.email,
+        photoUrl: provider.photoURL
+      })) || []
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
 
 const KurdishFlag = memo(({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
@@ -135,11 +189,64 @@ const App: React.FC = () => {
     isAnalyzing: false,
     isStarted: false,
     isWizardDirectOpen: false,
+    user: null,
+    isAuthReady: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const testConnection = async () => {
+      // Small delay to allow SDK to initialize
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        const docRef = doc(db, 'test', 'connection');
+        await getDocFromServer(docRef);
+        console.log("✅ Firestore connection verified.");
+      } catch (err: any) {
+        console.error("❌ Firestore connection failed:", err);
+        if (err.message?.includes('offline')) {
+          setState(prev => ({ ...prev, error: "Firestore is offline. Please check your internet connection or Firebase configuration." }));
+        }
+      }
+    };
+    testConnection();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setState(prev => ({ ...prev, user, isAuthReady: true }));
+      if (user) {
+        // Sync user profile to Firestore
+        const userRef = doc(db, 'users', user.uid);
+        setDoc(userRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: new Date().toISOString()
+        }, { merge: true }).catch(err => handleFirestoreError(err, OperationType.WRITE, `users/${user.uid}`));
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err: any) {
+      setState(prev => ({ ...prev, error: "Login failed: " + err.message }));
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err: any) {
+      setState(prev => ({ ...prev, error: "Logout failed: " + err.message }));
+    }
+  };
 
   useEffect(() => {
     if (state.isStarted) {
@@ -180,15 +287,38 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, error: "Please provide a description or an image." }));
       return;
     }
+    if (!state.user) {
+      setState(prev => ({ ...prev, error: "Please login to initialize a scan." }));
+      return;
+    }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
     try {
       const pureBase64 = state.image?.split(',')[1];
       const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
+      
+      // Save to Firestore
+      const repairData = {
+        id: crypto.randomUUID(),
+        userId: state.user.uid,
+        issueDescription: state.userInput,
+        aiDiagnosis: analysis.diagnosis,
+        status: 'diagnosed',
+        createdAt: new Date().toISOString(),
+        vehicleInfo: analysis.vinScanData ? {
+          make: analysis.vinScanData.make,
+          model: analysis.vinScanData.model,
+          year: analysis.vinScanData.year
+        } : null
+      };
+      
+      await addDoc(collection(db, 'repairs'), repairData)
+        .catch(err => handleFirestoreError(err, OperationType.CREATE, 'repairs'));
+
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
       setState(prev => ({ ...prev, isAnalyzing: false, error: getErrorMessage(err, state.mode) }));
     }
-  }, [state.userInput, state.image, state.mode, getErrorMessage]);
+  }, [state.userInput, state.image, state.mode, state.user, getErrorMessage]);
 
   const resetApp = useCallback(() => {
     setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, image: undefined, userInput: '', error: undefined }));
@@ -271,8 +401,30 @@ const App: React.FC = () => {
           <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
           <Globe className="w-5 h-5 text-cyan-400" />
         </div>
-        <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
-          {state.mode}
+        <div className="flex items-center gap-4">
+          {state.user ? (
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-400">{state.user.displayName}</span>
+                <button onClick={handleLogout} className="text-[9px] text-cyan-400 hover:text-cyan-300 font-bold uppercase tracking-wider">Logout</button>
+              </div>
+              {state.user.photoURL ? (
+                <img src={state.user.photoURL} className="w-8 h-8 rounded-full border border-cyan-500/30" alt="User" />
+              ) : (
+                <div className="w-8 h-8 rounded-full border border-cyan-500/30 flex items-center justify-center bg-slate-800">
+                  <UserIcon className="w-4 h-4 text-cyan-400" />
+                </div>
+              )}
+            </div>
+          ) : (
+            <button onClick={handleLogin} className="flex items-center gap-2 px-4 py-2 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[10px] font-black text-cyan-400 uppercase hover:bg-cyan-500/20 transition-all">
+              <LogIn className="w-3 h-3" />
+              Login
+            </button>
+          )}
+          <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
+            {state.mode}
+          </div>
         </div>
       </header>
       <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">

@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RegionMode } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 const SYSTEM_INSTRUCTION = `
 ROLE: "Repair Wizard" - Elite AI Technical Consultant & Automotive Import Broker (repairwizard.net).
