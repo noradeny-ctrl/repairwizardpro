@@ -1,34 +1,38 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { initializeFirestore, getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { initializeFirestore, getFirestore, doc, getDoc, enableNetwork } from 'firebase/firestore';
 import { getAnalytics, isSupported } from 'firebase/analytics';
-import 'firebase/analytics'; // Ensure side-effects are loaded for component registration
+import 'firebase/analytics'; 
 import firebaseConfig from './firebase-applet-config.json';
 
-// Initialize Firebase safely
+// Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize services
-export const auth = getAuth(app);
-
-// Use initializeFirestore to force long polling, which is more reliable in some sandboxed environments
-// Use the provided database ID or default to '(default)'
+// The "Wizard" Connection Shield - Optimized for repairwizardpro
 const databaseId = (firebaseConfig as any).firestoreDatabaseId || '(default)';
 
 let firestoreDb;
 try {
   firestoreDb = initializeFirestore(app, {
     experimentalForceLongPolling: true,
+    // @ts-ignore - "Wizard Shield" optimization for specific network environments
+    useFetchStreams: false,
+    host: 'firestore.googleapis.com',
+    ssl: true,
   }, databaseId);
 } catch (e) {
-  // If already initialized (e.g. during HMR or module re-evaluation), get the existing instance
   firestoreDb = getFirestore(app, databaseId);
 }
 
-export const db = firestoreDb;
+// Explicitly ensure network is enabled
+enableNetwork(firestoreDb).catch(err => {
+  console.warn("Failed to enable Firestore network:", err);
+});
 
-// Analytics (only if supported in the environment)
-// Export as a promise to ensure it's handled asynchronously
+export const db = firestoreDb;
+export const auth = getAuth(app);
+
+// Analytics
 export const analyticsPromise = typeof window !== 'undefined' 
   ? isSupported().then(yes => yes ? getAnalytics(app) : null).catch(() => null)
   : Promise.resolve(null);

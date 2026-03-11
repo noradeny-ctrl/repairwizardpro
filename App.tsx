@@ -10,7 +10,7 @@ import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp, doc, setDoc, getDocFromServer } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 
 enum OperationType {
   CREATE = 'create',
@@ -198,17 +198,22 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const testConnection = async () => {
+    const testConnection = async (retries = 3) => {
       // Small delay to allow SDK to initialize
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
       try {
         const docRef = doc(db, 'test', 'connection');
-        await getDocFromServer(docRef);
+        // Use getDoc instead of getDocFromServer for a more resilient initial check
+        await getDoc(docRef);
         console.log("✅ Firestore connection verified.");
       } catch (err: any) {
-        console.error("❌ Firestore connection failed:", err);
+        if (retries > 0) {
+          console.warn(`⚠️ Firestore connection attempt failed, retrying... (${retries} left)`);
+          return testConnection(retries - 1);
+        }
+        console.error("❌ Firestore connection failed after retries:", err);
         if (err.message?.includes('offline')) {
-          setState(prev => ({ ...prev, error: "Firestore is offline. Please check your internet connection or Firebase configuration." }));
+          setState(prev => ({ ...prev, error: "Firestore is offline. This usually happens when WebSockets are blocked. We've enabled Long Polling, but the connection is still failing. Please ensure Firestore is enabled in your Firebase Console." }));
         }
       }
     };

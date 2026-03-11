@@ -9,6 +9,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import admin from 'firebase-admin';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -51,6 +52,31 @@ const upload = multer({ storage });
 
 app.use(express.json());
 
+// --- Firebase Admin Initialization ---
+let firebaseAdminApp: admin.app.App | null = null;
+
+export function getFirebaseAdmin(): admin.app.App {
+  if (!firebaseAdminApp) {
+    const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!serviceAccountJson) {
+      console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT is not set. Firebase Admin features will be disabled.');
+      throw new Error('FIREBASE_SERVICE_ACCOUNT is required for this operation.');
+    }
+    
+    try {
+      const serviceAccount = JSON.parse(serviceAccountJson);
+      firebaseAdminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+      console.log('✅ Firebase Admin initialized successfully.');
+    } catch (error) {
+      console.error('❌ Failed to initialize Firebase Admin:', error);
+      throw error;
+    }
+  }
+  return firebaseAdminApp;
+}
+
 // --- Authentication Middleware ---
 const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
@@ -75,6 +101,15 @@ const authorizeRoles = (...roles: string[]) => {
 };
 
 // --- Auth Endpoints ---
+app.get('/api/admin/health', async (req, res) => {
+  try {
+    const adminApp = getFirebaseAdmin();
+    res.json({ status: 'ok', project: adminApp.options.projectId });
+  } catch (error: any) {
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+});
+
 app.post('/api/auth/signup', async (req, res) => {
   try {
     const { email, password } = req.body;
