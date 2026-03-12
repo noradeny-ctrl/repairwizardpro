@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, RegionMode } from "../types";
+import { AnalysisResult, RegionMode, RepairQuote } from "../types";
 
 export class WizardError extends Error {
   constructor(public category: 'network' | 'safety' | 'quota' | 'generic', message: string) {
@@ -171,5 +171,40 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
     
     console.error('Frontend Analyze Error:', error);
     throw new WizardError('generic', message);
+  }
+}
+
+export async function getRepairQuote(partName: string, link: string): Promise<RepairQuote> {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new WizardError('generic', "GEMINI_API_KEY not found.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Analyze this repair part: ${partName}. Link: ${link}. Return a JSON object with estimated costs in USD and BTC, and a short note.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            usd: { type: Type.NUMBER, description: "Estimated cost in USD" },
+            btc: { type: Type.NUMBER, description: "Estimated cost in BTC" },
+            note: { type: Type.STRING, description: "A short technical note or warning" }
+          },
+          required: ["usd", "btc", "note"]
+        }
+      }
+    });
+
+    const text = response.text;
+    if (!text) throw new Error("No response received from Gemini.");
+    return JSON.parse(text);
+  } catch (error: any) {
+    console.error("WIZARD_DIRECT_ERROR:", error);
+    // Fallback so the app doesn't crash
+    return { usd: "Manual Review", btc: "Awaiting", note: "System Busy" };
   }
 }

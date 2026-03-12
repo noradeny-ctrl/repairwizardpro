@@ -77,3 +77,9 @@ export interface AppState {
   result?: AnalysisResult;
   error?: string;
 }
+
+export interface RepairQuote {
+  usd: number | string;
+  btc: number | string;
+  note: string;
+}
