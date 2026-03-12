@@ -18,10 +18,10 @@ const ERROR_MESSAGES: Record<ErrorCategory, Record<RegionMode, string>> = {
     [RegionMode.ARABIC]: "فقد الاتصال. يرجى التحقق من اتصال الإنترنت."
   },
   quota: {
-    [RegionMode.WESTERN]: "Wizard is busy. Too many requests, please wait.",
-    [RegionMode.BADINAN]: "جادووگەر مژوولە. داخوازى زۆرن، هیڤیە چاڤەرێ بە.",
-    [RegionMode.SORANI]: "جادووگەر سەرقاڵە. داواکاری زۆرە، تکایە چاوەڕێ بکە.",
-    [RegionMode.ARABIC]: "المعالج مشغول. طلبات كثيرة جداً، يرجى الانتظار."
+    [RegionMode.WESTERN]: "The Wizard is currently handling too many requests. Please wait a few seconds and try again.",
+    [RegionMode.BADINAN]: "جادووگەر مژوولە. داخوازى زۆرن، هیڤیە چەند چرکەکا چاڤەرێ بە و دووبارە هەول بدە.",
+    [RegionMode.SORANI]: "جادووگەر سەرقاڵە. داواکاری زۆرە، تکایە چەند چرکەیەک چاوەڕێ بکە و دووبارە هەوڵ بدەرەوە.",
+    [RegionMode.ARABIC]: "المعالج مشغول حالياً بمعالجة الكثير من الطلبات. يرجى الانتظار لبضع ثوان ثم المحاولة مرة أخرى."
   },
   safety: {
     [RegionMode.WESTERN]: "Safety Protocol Blocked. Request violates safety guidelines.",

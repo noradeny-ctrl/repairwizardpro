@@ -184,9 +184,13 @@ const App: React.FC = () => {
           return testConnection(retries - 1);
         }
         console.error("❌ Firestore connection failed after retries:", err);
-        if (err.message?.includes('offline')) {
-          setState(prev => ({ ...prev, error: "Firestore is offline. This usually happens when WebSockets are blocked. We've enabled Long Polling, but the connection is still failing. Please ensure Firestore is enabled in your Firebase Console." }));
-        }
+        const errorMsg = err.message || String(err);
+        setState(prev => ({ 
+          ...prev, 
+          error: errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')
+            ? "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."
+            : `Initialization Error: ${errorMsg}` 
+        }));
       }
     };
     testConnection();
@@ -222,6 +226,10 @@ const App: React.FC = () => {
       const pureBase64 = state.image?.split(',')[1];
       const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
       
+      if (!analysis || typeof analysis !== 'object') {
+        throw new Error("Invalid analysis payload received.");
+      }
+
       // Save to Firestore (Anonymous)
       const repairData = {
         id: crypto.randomUUID(),
@@ -242,7 +250,9 @@ const App: React.FC = () => {
 
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
-      setState(prev => ({ ...prev, isAnalyzing: false, error: formatAppError(err, state.mode) }));
+      console.error("Analysis Failure:", err);
+      const errorMessage = formatAppError(err, state.mode);
+      setState(prev => ({ ...prev, isAnalyzing: false, error: String(errorMessage) }));
     }
   }, [state.userInput, state.image, state.mode]);
 
@@ -299,6 +309,30 @@ const App: React.FC = () => {
     </div>
   ), []);
 
+  // 1. Handle fatal errors first, before any other conditional returns
+  if (state.error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 text-center animate-fade-in">
+        <SunBackground />
+        <div className="relative z-10 bg-slate-900/60 border border-red-500/20 rounded-[2.5rem] p-10 max-w-md backdrop-blur-xl shadow-2xl">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
+            <span className="text-4xl">🧙‍♂️</span>
+          </div>
+          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">Wizard Connection Error</h2>
+          <p className="text-slate-300 text-sm mb-8 leading-relaxed">
+            {String(state.error)}
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+          >
+            Retry Connection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!state.isStarted) {
     return (
       <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden">
@@ -318,76 +352,82 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
-      <SunBackground />
-      <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
-        <div 
-          className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
-          onClick={() => setState(prev => ({...prev, isStarted: false}))}
-        >
-          <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
-          <Globe className="w-5 h-5 text-cyan-400" />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
-            {state.mode}
+        <SunBackground />
+        <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
+          <div 
+            className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
+            onClick={() => setState(prev => ({...prev, isStarted: false}))}
+          >
+            <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
+            <Globe className="w-5 h-5 text-cyan-400" />
           </div>
-        </div>
-      </header>
-      <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
-        <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md">
-          <textarea 
-            className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
-            placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : "ژمارا شاسی یان ئاریشێ بنڤیسە..."} 
-            value={state.userInput} 
-            onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
-          />
-        </div>
-        <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
-          {state.image ? (
-            <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
-          ) : (
-            <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">Add Photo</span></div>
+          <div className="flex items-center gap-4">
+            <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
+              {state.mode}
+            </div>
+          </div>
+        </header>
+        <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
+          <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md">
+            <textarea 
+              className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
+              placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : "ژمارا شاسی یان ئاریشێ بنڤیسە..."} 
+              value={state.userInput} 
+              onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
+            />
+          </div>
+          <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
+            {state.image ? (
+              <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">Add Photo</span></div>
+            )}
+          </div>
+          {state.error && (
+            <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center animate-shake">
+              <p className="text-red-400 text-xs font-bold leading-relaxed">
+                {String(state.error)}
+              </p>
+            </div>
           )}
-        </div>
-        {state.error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center text-red-400 text-xs font-bold">{state.error}</div>}
-        {PartnerProgramSection}
-        
-        <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
-          <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl group-hover:opacity-20 transition-opacity">🇺🇸</div>
-          <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">🇺🇸 WIZARD DIRECT IMPORT</h3>
-          <p className="text-sm text-slate-300 leading-relaxed mb-6">Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil.</p>
-          <div className="flex flex-wrap gap-4">
-            <button 
-              onClick={() => toggleWizardDirect(true)}
-              className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors"
-            >
-              Learn More
-            </button>
-            <a 
-              href="https://wa.me/16153392046" 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors"
-            >
-              WhatsApp Broker
-            </a>
+          {PartnerProgramSection}
+          
+          <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
+            <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl group-hover:opacity-20 transition-opacity">🇺🇸</div>
+            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">🇺🇸 WIZARD DIRECT IMPORT</h3>
+            <p className="text-sm text-slate-300 leading-relaxed mb-6">Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil.</p>
+            <div className="flex flex-wrap gap-4">
+              <button 
+                onClick={() => toggleWizardDirect(true)}
+                className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors"
+              >
+                Learn More
+              </button>
+              <a 
+                href="https://wa.me/16153392046" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors"
+              >
+                WhatsApp Broker
+              </a>
+            </div>
           </div>
+  
+          <div className="h-40" />
+        </main>
+        <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
+          <button onClick={startAnalysis} disabled={state.isAnalyzing} className="w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20">
+            <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
+              {state.isAnalyzing ? '⚡ SCANNING...' : '🔍 INITIALIZE SCAN'}
+            </span>
+          </button>
         </div>
-
-        <div className="h-40" />
-      </main>
-      <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
-        <button onClick={startAnalysis} disabled={state.isAnalyzing} className="w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20">
-          <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
-            {state.isAnalyzing ? '⚡ SCANNING...' : '🔍 INITIALIZE SCAN'}
-          </span>
-        </button>
+        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
+        {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
+        <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
-      {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
-      {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
-      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
-    </div>
-  );
-};
+    );
+  };
 
 export default App;

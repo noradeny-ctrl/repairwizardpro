@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         hmr: {
           overlay: false,
+          clientPort: 443,
         },
       },
       build: {

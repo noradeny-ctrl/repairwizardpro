@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import Markdown from 'react-markdown';
 import { AnalysisResult, RegionMode, Partner } from '../types';
 import PartnerCard from './PartnerCard';
+import StepByStepGuide from './StepByStepGuide';
+import { ListChecks } from 'lucide-react';
 
 interface ResultViewProps {
   result: AnalysisResult;
@@ -13,6 +15,7 @@ interface ResultViewProps {
 }
 
 const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWizardDirect, recommendedPartners = [] }) => {
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const isKurdish = result.isKurdish;
   const isArabic = mode === RegionMode.ARABIC;
   const isRTL = isKurdish || isArabic;
@@ -35,6 +38,12 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
     return 'IMPORT VIA WIZARD DIRECT';
   };
 
+  const getGuideLabel = () => {
+    if (isArabic) return 'عرض دليل الخطوات';
+    if (isKurdish) return 'دیتنا رێبەرێ گاڤ ب گاڤ';
+    return 'VIEW STEP-BY-STEP GUIDE';
+  };
+
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1e] overflow-hidden ${isRTL ? 'rtl text-right' : 'ltr text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50">
@@ -55,6 +64,28 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
       </div>
 
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
+        {result.instructions && result.instructions.length > 0 && (
+          <section className="animate-slide-up">
+            <button 
+              onClick={() => setIsGuideOpen(true)}
+              className="w-full p-6 bg-cyan-500/10 border border-cyan-500/20 rounded-[2rem] flex items-center justify-between group hover:bg-cyan-500/20 transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                  <ListChecks size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-1">Interactive Protocol</p>
+                  <p className="text-sm font-bold text-white">{getGuideLabel()}</p>
+                </div>
+              </div>
+              <div className={`text-cyan-500 transition-transform group-hover:translate-x-1 ${isRTL ? 'rotate-180' : ''}`}>
+                <ListChecks size={20} />
+              </div>
+            </button>
+          </section>
+        )}
+
         <section className="animate-slide-up markdown-body prose prose-invert max-w-none">
           <Markdown>{result.markdownOutput}</Markdown>
         </section>
@@ -110,6 +141,17 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
           {getResetLabel()}
          </button>
       </div>
+
+      {isGuideOpen && (
+        <div className="fixed inset-0 z-[110] animate-modal-enter">
+          <StepByStepGuide 
+            instructions={result.instructions} 
+            mode={mode} 
+            onClose={() => setIsGuideOpen(false)} 
+            safetyWarning={result.safetyWarning}
+          />
+        </div>
+      )}
     </div>
   );
 };
