@@ -72,14 +72,7 @@ export interface AppState {
   isAnalyzing: boolean;
   isStarted: boolean;
   isWizardDirectOpen: boolean;
-  isPartnerPortalOpen: boolean;
   image?: string;
   result?: AnalysisResult;
   error?: string;
-}
-
-export interface RepairQuote {
-  usd: number | string;
-  btc: number | string;
-  note: string;
 }

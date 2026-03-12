@@ -6,7 +6,6 @@ import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardDirectView from './components/WizardDirectView';
-import PartnerDashboard from './components/PartnerDashboard';
 import WizardIcon from './components/WizardIcon';
 import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
@@ -164,7 +163,6 @@ const App: React.FC = () => {
     isAnalyzing: false,
     isStarted: false,
     isWizardDirectOpen: false,
-    isPartnerPortalOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -271,10 +269,6 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, isWizardDirectOpen: open }));
   }, []);
 
-  const togglePartnerPortal = useCallback((open: boolean) => {
-    setState(prev => ({ ...prev, isPartnerPortalOpen: open }));
-  }, []);
-
   const isRTL = state.mode !== RegionMode.WESTERN;
 
   const nearbyPartners = useMemo(() => {
@@ -368,12 +362,6 @@ const App: React.FC = () => {
             <Globe className="w-5 h-5 text-cyan-400" />
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => togglePartnerPortal(true)}
-              className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 text-[9px] font-black text-slate-400 uppercase tracking-widest transition-colors"
-            >
-              Partner Portal
-            </button>
             <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
@@ -437,7 +425,6 @@ const App: React.FC = () => {
         </div>
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
         {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
-        {state.isPartnerPortalOpen && <PartnerDashboard onClose={() => togglePartnerPortal(false)} />}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
     );
