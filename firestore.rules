@@ -32,6 +32,16 @@ service cloud.firestore {
              (!('createdAt' in data) || isValidDateString(data.createdAt));
     }
 
+    function isValidOrder(data) {
+      return data.keys().hasAll(['partnerUid', 'partName', 'amazonUrl', 'status']) &&
+             data.partnerUid == request.auth.uid &&
+             data.partName is string && data.partName.size() < 200 &&
+             data.amazonUrl is string && data.amazonUrl.size() < 1000 &&
+             data.status in ['pending_review', 'approved', 'shipped', 'completed'] &&
+             (!('partnerEmail' in data) || (data.partnerEmail is string && data.partnerEmail.size() < 100)) &&
+             (!('btcAddress' in data) || (data.btcAddress is string && data.btcAddress.size() < 100));
+    }
+
     // Rules for test connection
     match /test/connection {
       allow read: if true;
@@ -42,6 +52,13 @@ service cloud.firestore {
       allow create: if isValidRepair(request.resource.data);
       allow update: if false; // No updates for now
       allow delete: if false; // No deletes for now
+    }
+
+    match /orders/{orderId} {
+      allow read: if request.auth != null && resource.data.partnerUid == request.auth.uid;
+      allow create: if request.auth != null && isValidOrder(request.resource.data);
+      allow update: if false; // Only admin can update status (not implemented yet)
+      allow delete: if false;
     }
 
     // Default deny

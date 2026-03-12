@@ -21,12 +21,31 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "issueDescription"]
+    },
+    "Order": {
+      "title": "Partner Order",
+      "description": "Stores a part request from a partner.",
+      "type": "object",
+      "properties": {
+        "partnerEmail": { "type": "string" },
+        "partnerUid": { "type": "string" },
+        "partName": { "type": "string" },
+        "amazonUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending_review", "approved", "shipped", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "btcAddress": { "type": "string" }
+      },
+      "required": ["partnerUid", "partName", "amazonUrl", "status"]
     }
   },
   "firestore": {
     "/repairs/{repairId}": {
       "schema": "RepairRecord",
       "description": "Repair record document."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Partner part orders."
     }
   }
 }

@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeFirestore, getFirestore, enableNetwork } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import 'firebase/analytics'; 
 import firebaseConfig from './firebase-applet-config.json';
@@ -29,6 +30,7 @@ enableNetwork(firestoreDb).catch(err => {
 });
 
 export const db = firestoreDb;
+export const auth = getAuth(app);
 
 // Analytics
 export const analyticsPromise = typeof window !== 'undefined' 
