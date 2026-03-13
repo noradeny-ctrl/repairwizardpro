@@ -5,8 +5,6 @@ import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './ty
 import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
-import WizardDirectView from './components/WizardDirectView';
-import VINScanner from './components/VINScanner';
 import WizardIcon from './components/WizardIcon';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
@@ -162,8 +160,6 @@ const App: React.FC = () => {
     mode: RegionMode.WESTERN,
     isAnalyzing: false,
     isStarted: false,
-    isWizardDirectOpen: false,
-    isVINScannerOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -224,12 +220,7 @@ const App: React.FC = () => {
       issueDescription: userInput,
       aiDiagnosis: analysis.diagnosis,
       status: 'diagnosed',
-      createdAt: new Date().toISOString(),
-      vehicleInfo: analysis.vinScanData ? {
-        make: analysis.vinScanData.make || 'Unknown',
-        model: analysis.vinScanData.model || 'Unknown',
-        year: analysis.vinScanData.year || 0
-      } : null
+      createdAt: new Date().toISOString()
     };
     
     await addDoc(collection(db, 'repairs'), repairData)
@@ -268,34 +259,6 @@ const App: React.FC = () => {
   const setInitialMode = useCallback((mode: RegionMode) => {
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
   }, []);
-
-  const toggleWizardDirect = useCallback((open: boolean) => {
-    setState(prev => ({ ...prev, isWizardDirectOpen: open }));
-  }, []);
-
-  const toggleVINScanner = useCallback((open: boolean) => {
-    setState(prev => ({ ...prev, isVINScannerOpen: open }));
-  }, []);
-
-  const handleVINScan = useCallback((vin: string) => {
-    setState(prev => ({ 
-      ...prev, 
-      userInput: vin, 
-      isVINScannerOpen: false, 
-      error: undefined,
-      isAnalyzing: true
-    }));
-    
-    // Trigger analysis with the extracted VIN
-    analyzeProblem(vin, undefined, state.mode)
-      .then(async (analysis) => {
-        await saveRepairToFirestore(vin, analysis);
-        setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
-      })
-      .catch(err => {
-        setState(prev => ({ ...prev, isAnalyzing: false, error: err.message }));
-      });
-  }, [state.mode]);
 
   const isRTL = state.mode !== RegionMode.WESTERN;
 
@@ -413,22 +376,10 @@ const App: React.FC = () => {
           <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative">
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
-              placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : state.mode === RegionMode.BADINAN ? "ژمارا شاسی یان ئاریشێ بنڤیسە..." : "ژمارەی شاسی یان کێشەکە بنووسە..."} 
+              placeholder={state.mode === RegionMode.WESTERN ? "Describe problem..." : state.mode === RegionMode.BADINAN ? "ئاریشێ بنڤیسە..." : "کێشەکە بنووسە..."} 
               value={state.userInput} 
               onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
             />
-            <button 
-              onClick={() => toggleVINScanner(true)}
-              className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-cyan-500/30 transition-all active:scale-90"
-              title={state.mode === RegionMode.BADINAN ? "پشکنینا شاسی" : "Scan VIN"}
-            >
-              <div className="flex flex-col items-center">
-                <span className="text-xl">🔍</span>
-                <span className="text-[6px] font-black uppercase tracking-tighter">
-                  {state.mode === RegionMode.BADINAN ? "پشکنینا شاسی" : "Scan VIN"}
-                </span>
-              </div>
-            </button>
           </div>
           <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
             {state.image ? (
@@ -450,34 +401,6 @@ const App: React.FC = () => {
             </div>
           )}
           
-          <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
-            <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl group-hover:opacity-20 transition-opacity">🇺🇸</div>
-            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">
-              {state.mode === RegionMode.BADINAN ? "🇺🇸 ویزارد دایرێکت هاوردەکرن" : "🇺🇸 WIZARD DIRECT IMPORT"}
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              {state.mode === RegionMode.BADINAN 
-                ? "تومبێلێن کلین تایتل راستەوخۆ ژ ئەمریکا بۆ کوردستانێ هاوردە بکە ب رێکا مێرسین و ئیبراهیم خەلیل." 
-                : "Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil."}
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <button 
-                onClick={() => toggleWizardDirect(true)}
-                className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors"
-              >
-                {state.mode === RegionMode.BADINAN ? "خەملاندنا بهای" : state.mode === RegionMode.SORANI ? "خەمڵاندنی نرخ" : state.mode === RegionMode.ARABIC ? "احصل على تقدير" : "Get Estimate"}
-              </button>
-              <a 
-                href="https://wa.me/16153392046" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors"
-              >
-                {state.mode === RegionMode.BADINAN ? "پەیوەندی ب برۆکەری بکە" : "WhatsApp Broker"}
-              </a>
-            </div>
-          </div>
-  
           <div className="h-40" />
         </main>
         <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
@@ -496,9 +419,7 @@ const App: React.FC = () => {
             </div>
           </button>
         </div>
-        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
-        {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
-        {state.isVINScannerOpen && <VINScanner onScan={handleVINScan} onClose={() => toggleVINScanner(false)} />}
+        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} /></div>}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
     );

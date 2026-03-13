@@ -10,11 +10,10 @@ interface ResultViewProps {
   result: AnalysisResult;
   mode: RegionMode;
   onReset: () => void;
-  onOpenWizardDirect: () => void;
   recommendedPartners?: Partner[];
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWizardDirect, recommendedPartners = [] }) => {
+const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommendedPartners = [] }) => {
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const isKurdish = result.isKurdish;
   const isArabic = mode === RegionMode.ARABIC;
@@ -30,13 +29,6 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
     if (isArabic) return 'خبراء معتمدون لهذه المشكلة';
     if (isKurdish) return 'هۆستایێن پشتڕاستکری بۆ ڤێ ئاریشێ';
     return 'VERIFIED EXPERTS FOR THIS PROBLEM';
-  };
-
-  const getImportLabel = () => {
-    if (isArabic) return 'احصل على تقدير الاستيراد';
-    if (mode === RegionMode.BADINAN) return 'خەملاندنا بهایێ هاوردەکرنێ';
-    if (isKurdish) return 'خەمڵاندنی نرخی هاوردەکردن';
-    return 'GET IMPORT ESTIMATE';
   };
 
   const getGuideLabel = () => {
@@ -156,40 +148,6 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
               {recommendedPartners.map(p => (
                 <PartnerCard key={p.id} partner={p} mode={mode} hideImage={true} />
               ))}
-            </div>
-          </section>
-        )}
-
-        {result.wizardDirectPitch && (
-          <section className="animate-slide-up bg-cyan-500/10 border border-cyan-500/20 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">🇺🇸</div>
-            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">
-              {mode === RegionMode.BADINAN ? "🇺🇸 پێشنیارا ویزارد دایرێکت" : "🇺🇸 WIZARD DIRECT RECOMMENDATION"}
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed mb-6">
-              {isArabic 
-                ? "تكلفة الإصلاح مرتفعة جداً. نوصي باستيراد سيارة نظيفة مباشرة من الولايات المتحدة." 
-                : mode === RegionMode.BADINAN 
-                  ? "بهایێ چاککرنێ گەلەک یێ بلندە. ئەم پێشنیار دکەین تومبێلەکا پاقژ ژ ئەمریکا هاوردە بکەی." 
-                  : isKurdish
-                    ? "بڕی تێچووی چاککردنەوە زۆرە. پێشنیار دەکەین ئۆتۆمبێلێکی پاک لە ئەمریکاوە هاوردە بکەیت."
-                    : "Repair costs are excessive. We recommend importing a clean title vehicle directly from the USA."}
-            </p>
-            <div className="flex flex-col gap-3">
-              <button 
-                onClick={onOpenWizardDirect}
-                className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-cyan-900/20 font-black text-[10px] uppercase tracking-[0.2em]"
-              >
-                {getImportLabel()}
-              </button>
-              <a 
-                href="https://wa.me/16153392046" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-900/20 font-black text-[10px] uppercase tracking-[0.2em]"
-              >
-                💬 {mode === RegionMode.BADINAN ? "پەیوەندی ب برۆکەری بکە" : "WhatsApp Broker"}
-              </a>
             </div>
           </section>
         )}

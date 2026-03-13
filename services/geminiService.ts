@@ -16,7 +16,7 @@ VISUAL FORMATTING (COMMAND CENTER UI):
 - Output all data as a high-tech dashboard using Markdown.
 - Use digital progress bars: ▰▰▰▰▰▰▰▱▱▱ [Status].
 - Wrap vehicle specs, technical steps, and price breakdowns in Code Blocks (\`\`\`) for a monospaced look.
-- Use functional emojis: 🔍 (Scan/Decode), ⚡ (Electrical Safety), 🛡️ (Verified/Clean Title), ⚠️ (Critical Warning), 💎 (Premium Partner), 🇺🇸 (Wizard Direct).
+- Use functional emojis: 🔍 (Scan/Decode), ⚡ (Electrical Safety), 🛡️ (Verified/Clean Title), ⚠️ (Critical Warning), 💎 (Premium Partner).
 
 MODULE 1: APPLIANCE & VEHICLE DIAGNOSTICS
 - Technical Protocol: Provide clear, numbered, concise technical steps necessary for the repair. Every DIY repair guide MUST contain at least 10 numbered steps.
@@ -25,45 +25,9 @@ MODULE 1: APPLIANCE & VEHICLE DIAGNOSTICS
   - Communicate in Badini Kurdish (Duhok/Zakho dialect), Sorani Kurdish (Erbil/Sulaymaniyah), or Iraqi Arabic when requested.
   - For Badini, use authentic Duhok/Zakho terminology (e.g., "تومبێل" instead of "سەیارە" where appropriate, "ئاریشە" for problem, "چاککرن" for repair).
 
-MODULE 2: VEHICLE IDENTITY & SAFETY (VIN SCANNING)
-- Trigger: When a 17-character alphanumeric VIN is provided.
-- Output: "Vehicle Identity Scan".
-- Check: Safety recalls, engine specs, origin, auction history, mileage discrepancies, salvage/flood titles.
-
 SAFETY PROTOCOL:
 - If high voltage, flammable, or structural integrity is involved, start with: ⚠️ CRITICAL SAFETY ALERT ⚠️.
 `;
-
-export async function scanVIN(imageBase64: string): Promise<string> {
-  try {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new WizardError('generic', "GEMINI_API_KEY not found.");
-    }
-
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: imageBase64.split(',')[1],
-              mimeType: 'image/jpeg'
-            }
-          },
-          { text: "Extract the 17-character Vehicle Identification Number (VIN) from this image. Return ONLY the VIN string, nothing else. If no VIN is found, return 'NOT_FOUND'." }
-        ]
-      }
-    });
-
-    const vin = response.text?.trim() || "";
-    return vin;
-  } catch (error) {
-    console.error('VIN Scan Error:', error);
-    throw error;
-  }
-}
 
 export async function analyzeProblem(textInput: string, imageBase64: string | undefined, mode: RegionMode): Promise<AnalysisResult> {
   try {
@@ -73,8 +37,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const isVIN = /^[A-HJ-NPR-Z0-9]{17}$/i.test(textInput?.trim() || "");
-    const parts: any[] = [{ text: isVIN ? `VIN Scan Request: "${textInput}"` : `Diagnostic Request: "${textInput}"` }];
+    const parts: any[] = [{ text: `Diagnostic Request: "${textInput}"` }];
     
     if (imageBase64) {
       parts.push({
@@ -108,7 +71,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
           type: Type.OBJECT,
           properties: {
             diagnosis: { type: Type.STRING },
-            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN", "VIN_SCAN"] },
+            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN"] },
             partName: { type: Type.STRING },
             toolsNeeded: { 
               type: Type.ARRAY,
@@ -121,20 +84,6 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
             safetyWarning: { type: Type.STRING },
             tip: { type: Type.STRING },
             isKurdish: { type: Type.BOOLEAN },
-            vinScanData: {
-              type: Type.OBJECT,
-              properties: {
-                make: { type: Type.STRING },
-                model: { type: Type.STRING },
-                year: { type: Type.NUMBER },
-                engine: { type: Type.STRING },
-                origin: { type: Type.STRING },
-                recalls: { type: Type.ARRAY, items: { type: Type.STRING } },
-                auctionHistory: { type: Type.STRING },
-                mileageStatus: { type: Type.STRING },
-                titleStatus: { type: Type.STRING }
-              }
-            },
             markdownOutput: { type: Type.STRING }
           },
           required: ["diagnosis", "resultType", "partName", "toolsNeeded", "instructions", "tip", "isKurdish", "markdownOutput"]
