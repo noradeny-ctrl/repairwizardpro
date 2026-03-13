@@ -1,10 +1,11 @@
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Camera, X, Zap, RefreshCw, Scan } from 'lucide-react';
+import { Camera, X, Zap, RefreshCw, Scan, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { scanVIN } from '../services/geminiService';
 
 interface VINScannerProps {
-  onScan: (image: string) => void;
+  onScan: (vin: string) => void;
   onClose: () => void;
 }
 
@@ -14,6 +15,7 @@ const VINScanner: React.FC<VINScannerProps> = ({ onScan, onClose }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const startCamera = useCallback(async () => {
     setError(null);
@@ -63,9 +65,10 @@ const VINScanner: React.FC<VINScannerProps> = ({ onScan, onClose }) => {
     };
   }, []);
 
-  const captureFrame = () => {
-    if (!videoRef.current || !canvasRef.current) return;
+  const captureFrame = async () => {
+    if (!videoRef.current || !canvasRef.current || isProcessing) return;
     setIsCapturing(true);
+    setIsProcessing(true);
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -77,7 +80,21 @@ const VINScanner: React.FC<VINScannerProps> = ({ onScan, onClose }) => {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       
       const imageData = canvas.toDataURL('image/jpeg', 0.8);
-      onScan(imageData);
+      
+      try {
+        const vin = await scanVIN(imageData);
+        if (vin === 'NOT_FOUND' || vin.length < 10) {
+          setError("VIN not detected clearly. Please try again with better lighting.");
+          setIsProcessing(false);
+          setIsCapturing(false);
+        } else {
+          onScan(vin);
+        }
+      } catch (err) {
+        setError("AI Processing failed. Please try again.");
+        setIsProcessing(false);
+        setIsCapturing(false);
+      }
     }
   };
 
@@ -133,9 +150,16 @@ const VINScanner: React.FC<VINScannerProps> = ({ onScan, onClose }) => {
                   animate={{ top: ['0%', '100%', '0%'] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
                 />
+
+                {isProcessing && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3 z-20">
+                    <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">AI OCR Processing...</span>
+                  </div>
+                )}
               </div>
               <p className="mt-6 text-[10px] font-black text-white/60 uppercase tracking-widest animate-pulse">
-                Detecting VIN...
+                {isProcessing ? "Extracting VIN Data..." : "Detecting VIN..."}
               </p>
             </div>
           </>
@@ -145,11 +169,15 @@ const VINScanner: React.FC<VINScannerProps> = ({ onScan, onClose }) => {
       <div className="absolute bottom-0 left-0 right-0 p-12 flex flex-col items-center gap-8 bg-gradient-to-t from-black/80 to-transparent">
         <button 
           onClick={captureFrame}
-          disabled={isCapturing || !!error}
+          disabled={isCapturing || !!error || isProcessing}
           className={`w-20 h-20 rounded-full border-4 border-white flex items-center justify-center transition-all active:scale-90 ${isCapturing ? 'opacity-50' : ''}`}
         >
           <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
-            <Scan size={32} className="text-black" />
+            {isProcessing ? (
+              <Loader2 size={32} className="text-black animate-spin" />
+            ) : (
+              <Scan size={32} className="text-black" />
+            )}
           </div>
         </button>
         

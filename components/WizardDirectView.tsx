@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { RegionMode } from '../types';
+import { Calculator, Truck, Ship, FileText, ShieldCheck, Copy, Check } from 'lucide-react';
 
 interface WizardDirectViewProps {
   mode: RegionMode;
@@ -19,8 +20,15 @@ enum VehicleType {
 const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) => {
   const [vehiclePrice, setVehiclePrice] = useState<number>(0);
   const [vehicleType, setVehicleType] = useState<VehicleType>(VehicleType.SEDAN);
+  const [copied, setCopied] = useState(false);
+  const priceInputRef = useRef<HTMLInputElement>(null);
   
   const isRTL = mode !== RegionMode.WESTERN;
+
+  useEffect(() => {
+    // Auto-focus the price input on mount for efficiency
+    setTimeout(() => priceInputRef.current?.focus(), 500);
+  }, []);
 
   const estimates = useMemo(() => {
     const baseInland = 500;
@@ -79,6 +87,22 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
     contact: mode === RegionMode.WESTERN ? "Contact Import Broker" : "پەیوەندیێ ب برۆکەری بکە",
     logistics: mode === RegionMode.WESTERN ? "LOGISTICS TIMELINE" : "خشتێ دەمێ ڤەگوهاستنێ",
     processGuide: mode === RegionMode.WESTERN ? "HOW IT WORKS" : "چەوانیا کارکرنێ",
+    presets: mode === RegionMode.WESTERN ? "Quick Presets" : "بهایێن بەرهەڤکری",
+    copyEstimate: mode === RegionMode.WESTERN ? "Copy Estimate" : "کۆپی کرنا خەملاندنێ",
+    estimateCopied: mode === RegionMode.WESTERN ? "Copied!" : "کۆپی بوو!",
+  };
+
+  const copyToClipboard = () => {
+    const text = `Wizard Direct Estimate:
+Vehicle: ${vehicleType}
+Auction Price: $${vehiclePrice.toLocaleString()}
+Total Landed: $${estimates.total.toLocaleString()} (~${estimates.totalIQD.toLocaleString()} IQD)
+Logistics: USA -> Mersin -> Zakho
+Contact: https://wa.me/16153392046`;
+    
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const steps = [
@@ -133,15 +157,27 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
 
           <div>
             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 block">{labels.pricePlaceholder}</label>
-            <div className="relative">
+            <div className="relative mb-4">
               <span className="absolute left-0 bottom-2 text-3xl font-black text-cyan-500/50">$</span>
               <input 
+                ref={priceInputRef}
                 type="number" 
                 className="w-full bg-transparent border-b-2 border-slate-700 focus:border-cyan-500 transition-colors text-3xl font-black text-white outline-none py-2 pl-8"
                 placeholder="0"
                 value={vehiclePrice || ''}
                 onChange={(e) => setVehiclePrice(Number(e.target.value))}
               />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[5000, 10000, 15000, 25000].map(price => (
+                <button 
+                  key={price}
+                  onClick={() => setVehiclePrice(price)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/5 text-[10px] font-bold text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all"
+                >
+                  ${price.toLocaleString()}
+                </button>
+              ))}
             </div>
           </div>
         </section>
@@ -169,20 +205,29 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
 
         {/* Cost Breakdown */}
         <section className="space-y-4">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] px-2">{labels.breakdown}</h3>
+          <div className="flex justify-between items-center px-2">
+            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em]">{labels.breakdown}</h3>
+            <button 
+              onClick={copyToClipboard}
+              className="flex items-center gap-2 text-[9px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 transition-colors"
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? labels.estimateCopied : labels.copyEstimate}
+            </button>
+          </div>
           
           <div className="bg-slate-900/60 border border-white/5 rounded-[2.5rem] overflow-hidden divide-y divide-white/5">
             {[
-              { label: labels.inland, value: estimates.inland, icon: "🚛" },
-              { label: labels.ocean, value: estimates.ocean, icon: "🚢" },
-              { label: labels.land, value: estimates.land, icon: "🚚" },
-              { label: labels.customs, value: estimates.customs, icon: "📋" },
-              { label: labels.wizardFee, value: estimates.wizardFee, icon: "💎" },
-              { label: labels.dealerFee, value: estimates.dealerFee, icon: "🏢" },
+              { label: labels.inland, value: estimates.inland, icon: <Truck size={20} /> },
+              { label: labels.ocean, value: estimates.ocean, icon: <Ship size={20} /> },
+              { label: labels.land, value: estimates.land, icon: <Truck size={20} className="rotate-180" /> },
+              { label: labels.customs, value: estimates.customs, icon: <FileText size={20} /> },
+              { label: labels.wizardFee, value: estimates.wizardFee, icon: <ShieldCheck size={20} /> },
+              { label: labels.dealerFee, value: estimates.dealerFee, icon: <Calculator size={20} /> },
             ].map((item, i) => (
               <div key={i} className="flex justify-between items-center p-6 hover:bg-white/5 transition-colors">
                 <div className="flex items-center gap-4">
-                  <span className="text-xl">{item.icon}</span>
+                  <div className="text-slate-500">{item.icon}</div>
                   <span className="text-sm font-bold text-slate-400">{item.label}</span>
                 </div>
                 <span className="font-mono font-black text-cyan-400">${item.value.toLocaleString()}</span>

@@ -19,11 +19,9 @@ VISUAL FORMATTING (COMMAND CENTER UI):
 - Use functional emojis: 🔍 (Scan/Decode), ⚡ (Electrical Safety), 🛡️ (Verified/Clean Title), ⚠️ (Critical Warning), 💎 (Premium Partner), 🇺🇸 (Wizard Direct).
 
 MODULE 1: APPLIANCE & VEHICLE DIAGNOSTICS
-- 20-Step Protocol: Every DIY repair guide MUST contain exactly 20 numbered, concise, technical steps.
-- 50% Rule: Calculate estimated repair cost vs. total market value. If cost > 50%, advise against repair and recommend replacement.
+- Technical Protocol: Provide clear, numbered, concise technical steps necessary for the repair. Every DIY repair guide MUST contain at least 10 numbered steps.
 - Iraqi Localization:
   - Prioritize "Power Surge" diagnostics (Mowlida/Grid switching instability).
-  - Use the "Sina'a Street Price Guard": Provide fair Iraqi Dinar (IQD) price ranges for parts.
   - Communicate in Badini Kurdish (Duhok/Zakho dialect), Sorani Kurdish (Erbil/Sulaymaniyah), or Iraqi Arabic when requested.
   - For Badini, use authentic Duhok/Zakho terminology (e.g., "تومبێل" instead of "سەیارە" where appropriate, "ئاریشە" for problem, "چاککرن" for repair).
 
@@ -32,26 +30,40 @@ MODULE 2: VEHICLE IDENTITY & SAFETY (VIN SCANNING)
 - Output: "Vehicle Identity Scan".
 - Check: Safety recalls, engine specs, origin, auction history, mileage discrepancies, salvage/flood titles.
 
-MODULE 3: MONETIZATION & REFERRALS
-- Global: Recommend tools/parts using Amazon Affiliate ID: repairwizar0d-20.
-- Search Optimization: ALWAYS provide "partName" and "toolsNeeded" in technical English (even if the main response is in Kurdish/Arabic) to ensure accurate Amazon search results.
-- Support/Brokerage: For direct import assistance or joining the partner program, contact: https://wa.me/16153392046.
-- Iraq/KRG: Recommend local "Verified Partner Shops" (Ustas) with WhatsApp links (e.g., https://wa.me/964xxxxxxxxx).
-
-MODULE 4: 🇺🇸 WIZARD DIRECT (USA TO KURDISTAN IMPORTS)
-- Trigger: If repair > 50%, VIN scan shows heavy damage/totaled, or user asks about importing.
-- Pitch: "⚠️ Repairing this vehicle is economically unviable. Skip the local dealership markups. Use the 🇺🇸 Wizard Direct portal to import a Clean Title vehicle directly from the USA to the Ibrahim Khalil border."
-- Logistics: Quote shipping via Port of Mersin (Turkey) to Ibrahim Khalil border (Zakho).
-- Costs Breakdown:
-  - USA Inland Towing: $300 - $800 (depending on auction location).
-  - Ocean Freight (USA to Mersin): $1,200 - $1,800.
-  - Land Transit (Mersin to Zakho): $500 - $700.
-  - KRG Customs (ASYCUDA): 15% (Standard).
-- Action: Provide a "Wizard Direct Import Estimate" table in the markdown output.
-
 SAFETY PROTOCOL:
 - If high voltage, flammable, or structural integrity is involved, start with: ⚠️ CRITICAL SAFETY ALERT ⚠️.
 `;
+
+export async function scanVIN(imageBase64: string): Promise<string> {
+  try {
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new WizardError('generic', "GEMINI_API_KEY not found.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              data: imageBase64.split(',')[1],
+              mimeType: 'image/jpeg'
+            }
+          },
+          { text: "Extract the 17-character Vehicle Identification Number (VIN) from this image. Return ONLY the VIN string, nothing else. If no VIN is found, return 'NOT_FOUND'." }
+        ]
+      }
+    });
+
+    const vin = response.text?.trim() || "";
+    return vin;
+  } catch (error) {
+    console.error('VIN Scan Error:', error);
+    throw error;
+  }
+}
 
 export async function analyzeProblem(textInput: string, imageBase64: string | undefined, mode: RegionMode): Promise<AnalysisResult> {
   try {
@@ -109,19 +121,6 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
             safetyWarning: { type: Type.STRING },
             tip: { type: Type.STRING },
             isKurdish: { type: Type.BOOLEAN },
-            repairCostEstimate: { type: Type.NUMBER },
-            marketValueEstimate: { type: Type.NUMBER },
-            repairVsReplaceRatio: { type: Type.NUMBER },
-            iqdPriceGuard: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  partName: { type: Type.STRING },
-                  priceRangeIQD: { type: Type.STRING }
-                }
-              }
-            },
             vinScanData: {
               type: Type.OBJECT,
               properties: {
@@ -136,7 +135,6 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
                 titleStatus: { type: Type.STRING }
               }
             },
-            wizardDirectPitch: { type: Type.BOOLEAN },
             markdownOutput: { type: Type.STRING }
           },
           required: ["diagnosis", "resultType", "partName", "toolsNeeded", "instructions", "tip", "isKurdish", "markdownOutput"]
@@ -152,20 +150,18 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
     
     const result = JSON.parse(text);
 
-    // Ensure exactly 20 steps protocol
+    // Ensure at least 10 steps protocol
     if (result.instructions && Array.isArray(result.instructions)) {
       const originalCount = result.instructions.length;
-      if (originalCount < 20) {
-        const paddingCount = 20 - originalCount;
+      if (originalCount < 10) {
+        const paddingCount = 10 - originalCount;
         for (let i = 0; i < paddingCount; i++) {
           const stepNum = originalCount + i + 1;
           result.instructions.push(`Step ${stepNum}: Final system verification and technical cleanup.`);
         }
-      } else if (originalCount > 20) {
-        result.instructions = result.instructions.slice(0, 20);
       }
     } else {
-      result.instructions = Array.from({ length: 20 }, (_, i) => `Step ${i + 1}: Technical diagnostic verification required.`);
+      result.instructions = Array.from({ length: 10 }, (_, i) => `Step ${i + 1}: Technical diagnostic verification required.`);
     }
 
     return result;

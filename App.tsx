@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { Globe, Loader2 } from 'lucide-react';
-import { RegionMode, AppState, Partner, Coordinates } from './types';
+import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
@@ -217,6 +217,25 @@ const App: React.FC = () => {
     reader.readAsDataURL(file);
   }, []);
 
+  const saveRepairToFirestore = async (userInput: string, analysis: AnalysisResult) => {
+    const repairData = {
+      id: crypto.randomUUID(),
+      userId: 'anonymous',
+      issueDescription: userInput,
+      aiDiagnosis: analysis.diagnosis,
+      status: 'diagnosed',
+      createdAt: new Date().toISOString(),
+      vehicleInfo: analysis.vinScanData ? {
+        make: analysis.vinScanData.make || 'Unknown',
+        model: analysis.vinScanData.model || 'Unknown',
+        year: analysis.vinScanData.year || 0
+      } : null
+    };
+    
+    await addDoc(collection(db, 'repairs'), repairData)
+      .catch(err => handleFirestoreError(err, OperationType.CREATE, 'repairs'));
+  };
+
   const startAnalysis = useCallback(async () => {
     if (!state.userInput.trim() && !state.image) {
       setState(prev => ({ ...prev, error: "Please provide a description or an image." }));
@@ -231,23 +250,7 @@ const App: React.FC = () => {
         throw new Error("Invalid analysis payload received.");
       }
 
-      // Save to Firestore (Anonymous)
-      const repairData = {
-        id: crypto.randomUUID(),
-        userId: 'anonymous',
-        issueDescription: state.userInput,
-        aiDiagnosis: analysis.diagnosis,
-        status: 'diagnosed',
-        createdAt: new Date().toISOString(),
-        vehicleInfo: analysis.vinScanData ? {
-          make: analysis.vinScanData.make || 'Unknown',
-          model: analysis.vinScanData.model || 'Unknown',
-          year: analysis.vinScanData.year || 0
-        } : null
-      };
-      
-      await addDoc(collection(db, 'repairs'), repairData)
-        .catch(err => handleFirestoreError(err, OperationType.CREATE, 'repairs'));
+      await saveRepairToFirestore(state.userInput, analysis);
 
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
@@ -274,15 +277,25 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, isVINScannerOpen: open }));
   }, []);
 
-  const handleVINScan = useCallback((image: string) => {
+  const handleVINScan = useCallback((vin: string) => {
     setState(prev => ({ 
       ...prev, 
-      image, 
+      userInput: vin, 
       isVINScannerOpen: false, 
       error: undefined,
-      userInput: prev.userInput || "Please scan and analyze this VIN."
+      isAnalyzing: true
     }));
-  }, []);
+    
+    // Trigger analysis with the extracted VIN
+    analyzeProblem(vin, undefined, state.mode)
+      .then(async (analysis) => {
+        await saveRepairToFirestore(vin, analysis);
+        setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
+      })
+      .catch(err => {
+        setState(prev => ({ ...prev, isAnalyzing: false, error: err.message }));
+      });
+  }, [state.mode]);
 
   const isRTL = state.mode !== RegionMode.WESTERN;
 
