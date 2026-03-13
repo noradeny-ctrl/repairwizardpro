@@ -21,6 +21,8 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
   const isRTL = isKurdish || isArabic;
   
   const getResetLabel = () => {
+    if (mode === RegionMode.BADINAN) return 'پشکنینەکا نوو دەستپێبکە';
+    if (isArabic) return 'بدء بروتوكول جديد';
     return 'Initialize New Protocol';
   };
 
@@ -31,9 +33,10 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
   };
 
   const getImportLabel = () => {
-    if (isArabic) return 'استيراد عبر ويزارد دایرێکت';
-    if (isKurdish) return 'هاوردەکرن ب رێکا ویزارد دایرێکت';
-    return 'IMPORT VIA WIZARD DIRECT';
+    if (isArabic) return 'احصل على تقدير الاستيراد';
+    if (mode === RegionMode.BADINAN) return 'خەملاندنا بهایێ هاوردەکرنێ';
+    if (isKurdish) return 'خەمڵاندنی نرخی هاوردەکردن';
+    return 'GET IMPORT ESTIMATE';
   };
 
   const getGuideLabel = () => {
@@ -97,7 +100,9 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
                     <ListChecks size={32} strokeWidth={2.5} />
                   </div>
                   <div className="text-left">
-                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-2 animate-pulse">Interactive Protocol</p>
+                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-2 animate-pulse">
+                      {mode === RegionMode.BADINAN ? 'پڕۆتۆکۆلا کارلێکەر' : 'Interactive Protocol'}
+                    </p>
                     <p className="text-xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors">{getGuideLabel()}</p>
                   </div>
                 </div>
@@ -127,7 +132,9 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
                   <ShoppingCart size={24} />
                 </div>
                 <div className="text-left">
-                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Amazon Global Store</p>
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">
+                    {mode === RegionMode.BADINAN ? 'کۆگەها جیهانی یا ئەمەزۆن' : 'Amazon Global Store'}
+                  </p>
                   <p className="text-sm font-bold text-white">{getAmazonLabel()}</p>
                 </div>
               </div>
@@ -156,13 +163,17 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
         {result.wizardDirectPitch && (
           <section className="animate-slide-up bg-cyan-500/10 border border-cyan-500/20 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
             <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl">🇺🇸</div>
-            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">🇺🇸 WIZARD DIRECT RECOMMENDATION</h3>
+            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">
+              {mode === RegionMode.BADINAN ? "🇺🇸 پێشنیارا ویزارد دایرێکت" : "🇺🇸 WIZARD DIRECT RECOMMENDATION"}
+            </h3>
             <p className="text-sm text-slate-300 leading-relaxed mb-6">
               {isArabic 
                 ? "تكلفة الإصلاح مرتفعة جداً. نوصي باستيراد سيارة نظيفة مباشرة من الولايات المتحدة." 
-                : isKurdish 
+                : mode === RegionMode.BADINAN 
                   ? "بهایێ چاککرنێ گەلەک یێ بلندە. ئەم پێشنیار دکەین تومبێلەکا پاقژ ژ ئەمریکا هاوردە بکەی." 
-                  : "Repair costs are excessive. We recommend importing a clean title vehicle directly from the USA."}
+                  : isKurdish
+                    ? "بڕی تێچووی چاککردنەوە زۆرە. پێشنیار دەکەین ئۆتۆمبێلێکی پاک لە ئەمریکاوە هاوردە بکەیت."
+                    : "Repair costs are excessive. We recommend importing a clean title vehicle directly from the USA."}
             </p>
             <div className="flex flex-col gap-3">
               <button 
@@ -177,7 +188,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
                 rel="noopener noreferrer"
                 className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-900/20 font-black text-[10px] uppercase tracking-[0.2em]"
               >
-                💬 WhatsApp Broker
+                💬 {mode === RegionMode.BADINAN ? "پەیوەندی ب برۆکەری بکە" : "WhatsApp Broker"}
               </a>
             </div>
           </section>

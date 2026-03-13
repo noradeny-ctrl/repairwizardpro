@@ -8,7 +8,6 @@ import ResultView from './components/ResultView';
 import WizardDirectView from './components/WizardDirectView';
 import VINScanner from './components/VINScanner';
 import WizardIcon from './components/WizardIcon';
-import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -339,18 +338,6 @@ const App: React.FC = () => {
       .slice(0, 3);
   }, [nearbyPartners, state.userInput, state.result]);
 
-  const PartnerProgramSection = useMemo(() => (
-    <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
-      <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity"><PartnerBadge size={100} /></div>
-      <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">💎 VERIFIED PARTNER PROGRAM</h3>
-      <p className="text-sm text-slate-300 leading-relaxed mb-6">Join our elite network of certified "Ustas" and technical wizards.</p>
-      <div className="flex flex-wrap gap-4">
-        <a href="https://wa.me/16153392046" target="_blank" rel="noopener noreferrer" className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors">Join via WhatsApp</a>
-        <a href="https://repairwizard.net" target="_blank" rel="noopener noreferrer" className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors">Visit repairwizard.net</a>
-      </div>
-    </div>
-  ), []);
-
   // 1. Handle fatal errors first, before any other conditional returns
   if (state.error) {
     return (
@@ -413,18 +400,20 @@ const App: React.FC = () => {
           <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative">
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
-              placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : "ژمارا شاسی یان ئاریشێ بنڤیسە..."} 
+              placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : state.mode === RegionMode.BADINAN ? "ژمارا شاسی یان ئاریشێ بنڤیسە..." : "ژمارەی شاسی یان کێشەکە بنووسە..."} 
               value={state.userInput} 
               onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
             />
             <button 
               onClick={() => toggleVINScanner(true)}
               className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-cyan-500/30 transition-all active:scale-90"
-              title="Scan VIN"
+              title={state.mode === RegionMode.BADINAN ? "پشکنینا شاسی" : "Scan VIN"}
             >
               <div className="flex flex-col items-center">
                 <span className="text-xl">🔍</span>
-                <span className="text-[6px] font-black uppercase tracking-tighter">Scan VIN</span>
+                <span className="text-[6px] font-black uppercase tracking-tighter">
+                  {state.mode === RegionMode.BADINAN ? "پشکنینا شاسی" : "Scan VIN"}
+                </span>
               </div>
             </button>
           </div>
@@ -432,7 +421,12 @@ const App: React.FC = () => {
             {state.image ? (
               <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
             ) : (
-              <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">Add Photo</span></div>
+              <div className="flex flex-col items-center gap-2 opacity-40">
+                <span className="text-3xl">📸</span>
+                <span className="text-[10px] font-bold uppercase">
+                  {state.mode === RegionMode.BADINAN ? "وێنەیەکێ زێدە بکە" : "Add Photo"}
+                </span>
+              </div>
             )}
           </div>
           {state.error && (
@@ -442,18 +436,23 @@ const App: React.FC = () => {
               </p>
             </div>
           )}
-          {PartnerProgramSection}
           
           <div className="mt-4 bg-slate-900/60 border border-cyan-500/10 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-500">
             <div className="absolute top-0 right-0 p-4 opacity-10 text-4xl group-hover:opacity-20 transition-opacity">🇺🇸</div>
-            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">🇺🇸 WIZARD DIRECT IMPORT</h3>
-            <p className="text-sm text-slate-300 leading-relaxed mb-6">Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil.</p>
+            <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">
+              {state.mode === RegionMode.BADINAN ? "🇺🇸 ویزارد دایرێکت هاوردەکرن" : "🇺🇸 WIZARD DIRECT IMPORT"}
+            </h3>
+            <p className="text-sm text-slate-300 leading-relaxed mb-6">
+              {state.mode === RegionMode.BADINAN 
+                ? "تومبێلێن کلین تایتل راستەوخۆ ژ ئەمریکا بۆ کوردستانێ هاوردە بکە ب رێکا مێرسین و ئیبراهیم خەلیل." 
+                : "Import clean title vehicles directly from the USA to Kurdistan via Mersin & Ibrahim Khalil."}
+            </p>
             <div className="flex flex-wrap gap-4">
               <button 
                 onClick={() => toggleWizardDirect(true)}
                 className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors"
               >
-                Learn More
+                {state.mode === RegionMode.BADINAN ? "خەملاندنا بهای" : state.mode === RegionMode.SORANI ? "خەمڵاندنی نرخ" : state.mode === RegionMode.ARABIC ? "احصل على تقدير" : "Get Estimate"}
               </button>
               <a 
                 href="https://wa.me/16153392046" 
@@ -461,7 +460,7 @@ const App: React.FC = () => {
                 rel="noopener noreferrer" 
                 className="text-emerald-400 text-xs font-bold border-b border-emerald-500/40 pb-1 hover:text-emerald-300 transition-colors"
               >
-                WhatsApp Broker
+                {state.mode === RegionMode.BADINAN ? "پەیوەندی ب برۆکەری بکە" : "WhatsApp Broker"}
               </a>
             </div>
           </div>
@@ -477,7 +476,9 @@ const App: React.FC = () => {
             <div className="flex items-center gap-3">
               {state.isAnalyzing && <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />}
               <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
-                {state.isAnalyzing ? '⚡ SCANNING...' : '🔍 INITIALIZE SCAN'}
+                {state.isAnalyzing 
+                  ? (state.mode === RegionMode.BADINAN ? '⚡ لێگەڕیان...' : '⚡ SCANNING...') 
+                  : (state.mode === RegionMode.BADINAN ? '🔍 دەست ب پشکنینێ بکە' : '🔍 INITIALIZE SCAN')}
               </span>
             </div>
           </button>

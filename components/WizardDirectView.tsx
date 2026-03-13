@@ -8,9 +8,12 @@ interface WizardDirectViewProps {
 
 enum VehicleType {
   SEDAN = 'SEDAN',
-  SUV = 'SUV',
-  PICKUP = 'PICKUP',
-  EV = 'EV'
+  SUV_SMALL = 'SUV (SMALL)',
+  SUV_LARGE = 'SUV (LARGE)',
+  PICKUP_LIGHT = 'PICKUP (LIGHT)',
+  PICKUP_HEAVY = 'PICKUP (HEAVY)',
+  EV = 'ELECTRIC VEHICLE',
+  HYBRID = 'HYBRID'
 }
 
 const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) => {
@@ -24,11 +27,14 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
     const baseOcean = 1500;
     const baseLand = 600;
     
-    const multipliers = {
+    const multipliers: Record<VehicleType, number> = {
       [VehicleType.SEDAN]: 1,
-      [VehicleType.SUV]: 1.2,
-      [VehicleType.PICKUP]: 1.4,
-      [VehicleType.EV]: 1.3
+      [VehicleType.SUV_SMALL]: 1.2,
+      [VehicleType.SUV_LARGE]: 1.4,
+      [VehicleType.PICKUP_LIGHT]: 1.5,
+      [VehicleType.PICKUP_HEAVY]: 1.8,
+      [VehicleType.EV]: 1.3,
+      [VehicleType.HYBRID]: 1.1
     };
 
     const multiplier = multipliers[vehicleType];
@@ -41,6 +47,9 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
     const customs = vehiclePrice * customsRate;
     const total = vehiclePrice + inland + ocean + land + customs + wizardFee + dealerFee;
     
+    const iqdRate = 1500; // Fixed rate for estimation
+    const totalIQD = total * iqdRate;
+
     return {
       inland,
       ocean,
@@ -48,7 +57,8 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
       wizardFee,
       dealerFee,
       customs,
-      total
+      total,
+      totalIQD
     };
   }, [vehiclePrice, vehicleType]);
 
@@ -65,8 +75,10 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
     wizardFee: mode === RegionMode.WESTERN ? "RepairWizard Service Fee" : "کرێیا خزمەتگۆزاریا ڕێپەیر ویزارد",
     dealerFee: mode === RegionMode.WESTERN ? "Dealer Account Fee" : "کرێیا هەژمارا دیلەر",
     total: mode === RegionMode.WESTERN ? "TOTAL LANDED COST" : "کۆژمێ گشتی",
+    totalIQD: mode === RegionMode.WESTERN ? "ESTIMATED IQD TOTAL" : "کۆژمێ خەملاندی ب دینار",
     contact: mode === RegionMode.WESTERN ? "Contact Import Broker" : "پەیوەندیێ ب برۆکەری بکە",
     logistics: mode === RegionMode.WESTERN ? "LOGISTICS TIMELINE" : "خشتێ دەمێ ڤەگوهاستنێ",
+    processGuide: mode === RegionMode.WESTERN ? "HOW IT WORKS" : "چەوانیا کارکرنێ",
   };
 
   const steps = [
@@ -76,6 +88,20 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
     { id: 4, label: mode === RegionMode.WESTERN ? "Mersin Port" : "بەندەرا مێرسین", icon: "⚓", duration: "2-4 Days" },
     { id: 5, label: mode === RegionMode.WESTERN ? "Zakho Border" : "سنۆرێ زاخۆ", icon: "🏁", duration: "1-2 Days" },
   ];
+
+  const getVehicleTypeLabel = (type: VehicleType) => {
+    if (mode === RegionMode.WESTERN) return type;
+    const labels: Record<VehicleType, string> = {
+      [VehicleType.SEDAN]: 'سێدان',
+      [VehicleType.SUV_SMALL]: 'SUV (بچویک)',
+      [VehicleType.SUV_LARGE]: 'SUV (مەزن)',
+      [VehicleType.PICKUP_LIGHT]: 'پیکاپ (سڤک)',
+      [VehicleType.PICKUP_HEAVY]: 'پیکاپ (گران)',
+      [VehicleType.EV]: 'تومبێلا کارەبایی',
+      [VehicleType.HYBRID]: 'هایبرید'
+    };
+    return labels[type];
+  };
 
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1e] text-white overflow-hidden animate-modal-enter ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -99,7 +125,7 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
                   onClick={() => setVehicleType(type)}
                   className={`py-3 px-4 rounded-2xl text-[10px] font-black transition-all border ${vehicleType === type ? 'bg-cyan-500 border-cyan-400 text-white shadow-lg shadow-cyan-900/20' : 'bg-slate-900/40 border-white/5 text-slate-400 hover:bg-slate-800'}`}
                 >
-                  {type}
+                  {getVehicleTypeLabel(type)}
                 </button>
               ))}
             </div>
@@ -163,13 +189,45 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
               </div>
             ))}
             
-            <div className="flex justify-between items-center p-8 bg-cyan-500/10 border-t border-cyan-500/20">
-              <div className="flex items-center gap-4">
-                <span className="text-2xl">💰</span>
-                <span className="text-sm font-black text-white uppercase tracking-widest">{labels.total}</span>
+            <div className="p-8 bg-cyan-500/10 border-t border-cyan-500/20 space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <span className="text-2xl">💰</span>
+                  <span className="text-sm font-black text-white uppercase tracking-widest">{labels.total}</span>
+                </div>
+                <span className="text-2xl font-mono font-black text-cyan-400">${estimates.total.toLocaleString()}</span>
               </div>
-              <span className="text-2xl font-mono font-black text-cyan-400">${estimates.total.toLocaleString()}</span>
+              <div className="flex justify-between items-center pt-4 border-t border-white/5">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{labels.totalIQD}</span>
+                <span className="text-lg font-mono font-black text-emerald-400">~ {estimates.totalIQD.toLocaleString()} IQD</span>
+              </div>
             </div>
+          </div>
+        </section>
+
+        {/* Process Guide */}
+        <section className="space-y-4">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.4em] px-2">{labels.processGuide}</h3>
+          <div className="grid grid-cols-1 gap-3">
+            {[
+              { 
+                title: mode === RegionMode.WESTERN ? "1. Auction Access" : "١. دەستپێکرنا موزایدێ", 
+                desc: mode === RegionMode.WESTERN ? "We provide access to Copart/IAAI dealer accounts." : "ئەم هەژمارێن دیلەران بۆ کۆپارت و IAAI دابین دکەین." 
+              },
+              { 
+                title: mode === RegionMode.WESTERN ? "2. Secure Payment" : "٢. پارەدانەکا پاراستی", 
+                desc: mode === RegionMode.WESTERN ? "Funds are wired directly to the auction house." : "پارە ب رەنگەکێ راستەوخۆ بۆ موزایدێ دهێتە هنارتن." 
+              },
+              { 
+                title: mode === RegionMode.WESTERN ? "3. Global Logistics" : "٣. ڤەگوهاستنا جیهانی", 
+                desc: mode === RegionMode.WESTERN ? "Full tracking from USA port to Zakho border." : "دووڤچوونا هەمی قۆناغێن ڤەگوهاستنێ ژ ئەمریکا بۆ زاخۆ." 
+              }
+            ].map((item, i) => (
+              <div key={i} className="p-6 bg-slate-800/20 border border-white/5 rounded-2xl">
+                <h4 className="text-xs font-black text-white uppercase mb-2">{item.title}</h4>
+                <p className="text-[10px] text-slate-400 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -199,7 +257,9 @@ const WizardDirectView: React.FC<WizardDirectViewProps> = ({ mode, onClose }) =>
           className="w-full py-5 bg-emerald-600 hover:bg-emerald-500 transition-all rounded-[2rem] flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20 active:scale-95"
         >
           <span className="text-xl">💬</span>
-          <span className="font-black tracking-[0.2em] uppercase text-[10px] text-white">WhatsApp Broker</span>
+          <span className="font-black tracking-[0.2em] uppercase text-[10px] text-white">
+            {mode === RegionMode.BADINAN ? "پەیوەندی ب برۆکەری بکە" : "WhatsApp Broker"}
+          </span>
         </a>
         <div className="pt-4 text-center">
           <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
