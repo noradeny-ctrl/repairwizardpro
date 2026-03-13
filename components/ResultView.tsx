@@ -21,8 +21,6 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
   const isRTL = isKurdish || isArabic;
   
   const getResetLabel = () => {
-    if (isArabic) return 'بدء بروتوكول جديد';
-    if (isKurdish) return 'دەستپێکرنا پڕۆتۆکۆلەکا نوو';
     return 'Initialize New Protocol';
   };
 
@@ -65,24 +63,30 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
 
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
         {result.instructions && result.instructions.length > 0 && (
-          <section className="animate-slide-up">
-            <button 
-              onClick={() => setIsGuideOpen(true)}
-              className="w-full p-6 bg-cyan-500/10 border border-cyan-500/20 rounded-[2rem] flex items-center justify-between group hover:bg-cyan-500/20 transition-all"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center text-cyan-400">
-                  <ListChecks size={24} />
-                </div>
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-1">Interactive Protocol</p>
-                  <p className="text-sm font-bold text-white">{getGuideLabel()}</p>
-                </div>
+          <section className="animate-slide-up space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
+                <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em]">TECHNICAL PROTOCOL (20 STEPS)</p>
               </div>
-              <div className={`text-cyan-500 transition-transform group-hover:translate-x-1 ${isRTL ? 'rotate-180' : ''}`}>
-                <ListChecks size={20} />
-              </div>
-            </button>
+              <button 
+                onClick={() => setIsGuideOpen(true)}
+                className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:bg-cyan-500/20 transition-all"
+              >
+                {isArabic ? 'فتح الوضع التفاعلي' : isKurdish ? 'ڤەکرنا بارێ کارلێکەر' : 'OPEN INTERACTIVE MODE'}
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3">
+              {result.instructions.map((step, i) => (
+                <div key={i} className="flex gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-cyan-500/30 transition-all">
+                  <div className="shrink-0 w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-black font-mono text-cyan-500 border border-white/5">
+                    {i + 1}
+                  </div>
+                  <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">{step}</p>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 

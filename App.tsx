@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
-import { Globe } from 'lucide-react';
+import { Globe, Loader2 } from 'lucide-react';
 import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
@@ -419,10 +419,17 @@ const App: React.FC = () => {
           <div className="h-40" />
         </main>
         <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
-          <button onClick={startAnalysis} disabled={state.isAnalyzing} className="w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20">
-            <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
-              {state.isAnalyzing ? '⚡ SCANNING...' : '🔍 INITIALIZE SCAN'}
-            </span>
+          <button 
+            onClick={startAnalysis} 
+            disabled={state.isAnalyzing} 
+            className={`w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20 ${state.isAnalyzing ? 'animate-pulse' : ''}`}
+          >
+            <div className="flex items-center gap-3">
+              {state.isAnalyzing && <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />}
+              <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
+                {state.isAnalyzing ? '⚡ SCANNING...' : '🔍 INITIALIZE SCAN'}
+              </span>
+            </div>
           </button>
         </div>
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
