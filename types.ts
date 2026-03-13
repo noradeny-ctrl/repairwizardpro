@@ -72,6 +72,7 @@ export interface AppState {
   isAnalyzing: boolean;
   isStarted: boolean;
   isWizardDirectOpen: boolean;
+  isVINScannerOpen: boolean;
   image?: string;
   result?: AnalysisResult;
   error?: string;

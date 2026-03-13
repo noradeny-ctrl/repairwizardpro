@@ -4,7 +4,7 @@ import Markdown from 'react-markdown';
 import { AnalysisResult, RegionMode, Partner } from '../types';
 import PartnerCard from './PartnerCard';
 import StepByStepGuide from './StepByStepGuide';
-import { ListChecks } from 'lucide-react';
+import { ListChecks, ShoppingCart, ExternalLink } from 'lucide-react';
 
 interface ResultViewProps {
   result: AnalysisResult;
@@ -42,6 +42,18 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
     return 'VIEW STEP-BY-STEP GUIDE';
   };
 
+  const getAmazonUrl = () => {
+    const storeId = import.meta.env.VITE_AMAZON_STORE_ID || 'repairwizar0d-20';
+    const query = encodeURIComponent(result.partName || 'car parts');
+    return `https://www.amazon.com/s?k=${query}&tag=${storeId}`;
+  };
+
+  const getAmazonLabel = () => {
+    if (isArabic) return 'تسوق قطع الغيار الأصلية';
+    if (isKurdish) return 'کڕینا پارچەیێن رەسەن';
+    return 'SHOP GENUINE REPLACEMENT PARTS';
+  };
+
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1e] overflow-hidden ${isRTL ? 'rtl text-right' : 'ltr text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
       <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50">
@@ -63,36 +75,68 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
 
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
         {result.instructions && result.instructions.length > 0 && (
-          <section className="animate-slide-up space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse"></span>
-                <p className="text-[10px] font-black text-cyan-400 uppercase tracking-[0.3em]">TECHNICAL PROTOCOL (20 STEPS)</p>
+          <section className="animate-slide-up">
+            {isGuideOpen ? (
+              <div className="border border-cyan-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-cyan-900/20">
+                <StepByStepGuide 
+                  instructions={result.instructions} 
+                  mode={mode} 
+                  onClose={() => setIsGuideOpen(false)} 
+                  safetyWarning={result.safetyWarning}
+                  toolsNeeded={result.toolsNeeded}
+                />
               </div>
+            ) : (
               <button 
                 onClick={() => setIsGuideOpen(true)}
-                className="px-4 py-2 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest hover:bg-cyan-500/20 transition-all"
+                className="w-full p-8 bg-gradient-to-br from-cyan-600/20 to-cyan-900/40 border-2 border-cyan-500/50 rounded-[2.5rem] flex items-center justify-between group hover:from-cyan-500/30 hover:to-cyan-800/50 transition-all duration-500 shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)] relative overflow-hidden"
               >
-                {isArabic ? 'فتح الوضع التفاعلي' : isKurdish ? 'ڤەکرنا بارێ کارلێکەر' : 'OPEN INTERACTIVE MODE'}
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 gap-3">
-              {result.instructions.map((step, i) => (
-                <div key={i} className="flex gap-4 p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-cyan-500/30 transition-all">
-                  <div className="shrink-0 w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-[10px] font-black font-mono text-cyan-500 border border-white/5">
-                    {i + 1}
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
+                <div className="flex items-center gap-6">
+                  <div className="w-16 h-16 rounded-[1.5rem] bg-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center text-white transform group-hover:scale-110 transition-transform duration-500">
+                    <ListChecks size={32} strokeWidth={2.5} />
                   </div>
-                  <p className="text-sm text-slate-300 leading-relaxed group-hover:text-white transition-colors">{step}</p>
+                  <div className="text-left">
+                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-2 animate-pulse">Interactive Protocol</p>
+                    <p className="text-xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors">{getGuideLabel()}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+                <div className={`w-12 h-12 rounded-full border border-cyan-500/30 flex items-center justify-center text-cyan-400 transition-all duration-500 group-hover:bg-cyan-500 group-hover:text-white ${isRTL ? 'rotate-180' : 'group-hover:translate-x-2'}`}>
+                  <ListChecks size={24} />
+                </div>
+              </button>
+            )}
           </section>
         )}
 
         <section className="animate-slide-up markdown-body prose prose-invert max-w-none">
-          <Markdown>{result.markdownOutput}</Markdown>
+          <Markdown>{result.markdownOutput.replace(/\\n/g, '\n')}</Markdown>
         </section>
+
+        {/* Amazon Affiliate Section */}
+        {result.partName && (
+          <section className="animate-slide-up">
+            <a 
+              href={getAmazonUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full p-6 bg-gradient-to-r from-orange-500/10 to-orange-900/20 border border-orange-500/30 rounded-[2rem] flex items-center justify-between group hover:from-orange-500/20 hover:to-orange-900/30 transition-all shadow-xl shadow-orange-900/10"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-orange-500/20 flex items-center justify-center text-orange-400">
+                  <ShoppingCart size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Amazon Global Store</p>
+                  <p className="text-sm font-bold text-white">{getAmazonLabel()}</p>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-full border border-orange-500/30 flex items-center justify-center text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                <ExternalLink size={18} />
+              </div>
+            </a>
+          </section>
+        )}
 
         {/* Partners Integrated Directly into Diagnosis Section */}
         {recommendedPartners.length > 0 && (
@@ -140,22 +184,12 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, onOpenWi
         )}
       </div>
       
-      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24">
+      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24 z-50">
          <button onClick={onReset} className="w-full py-6 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-[2.25rem] text-[10px] font-black uppercase tracking-[0.3em] text-white shadow-2xl active:scale-95 transition-all">
           {getResetLabel()}
          </button>
       </div>
 
-      {isGuideOpen && (
-        <div className="fixed inset-0 z-[110] animate-modal-enter">
-          <StepByStepGuide 
-            instructions={result.instructions} 
-            mode={mode} 
-            onClose={() => setIsGuideOpen(false)} 
-            safetyWarning={result.safetyWarning}
-          />
-        </div>
-      )}
     </div>
   );
 };

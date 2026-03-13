@@ -6,13 +6,12 @@ import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardDirectView from './components/WizardDirectView';
+import VINScanner from './components/VINScanner';
 import WizardIcon from './components/WizardIcon';
 import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
-
-console.log("Checking API Key availability...", !!import.meta.env.VITE_GEMINI_API_KEY);
 
 enum OperationType {
   CREATE = 'create',
@@ -165,6 +164,7 @@ const App: React.FC = () => {
     isAnalyzing: false,
     isStarted: false,
     isWizardDirectOpen: false,
+    isVINScannerOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -271,6 +271,20 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, isWizardDirectOpen: open }));
   }, []);
 
+  const toggleVINScanner = useCallback((open: boolean) => {
+    setState(prev => ({ ...prev, isVINScannerOpen: open }));
+  }, []);
+
+  const handleVINScan = useCallback((image: string) => {
+    setState(prev => ({ 
+      ...prev, 
+      image, 
+      isVINScannerOpen: false, 
+      error: undefined,
+      userInput: prev.userInput || "Please scan and analyze this VIN."
+    }));
+  }, []);
+
   const isRTL = state.mode !== RegionMode.WESTERN;
 
   const nearbyPartners = useMemo(() => {
@@ -292,11 +306,37 @@ const App: React.FC = () => {
 
   const recommendedPartners = useMemo(() => {
     if (!nearbyPartners.length || !state.result) return [];
-    const context = `${state.userInput} ${state.result.diagnosis} ${state.result.partName}`.toLowerCase();
-    return nearbyPartners.filter(p => 
-      p.specialties.some(s => context.includes(s.toLowerCase())) || 
-      p.services_offered.some(s => context.includes(s.toLowerCase()))
-    ).slice(0, 3);
+    
+    const diagnosis = state.result.diagnosis.toLowerCase();
+    const partName = state.result.partName.toLowerCase();
+    const userInput = state.userInput.toLowerCase();
+
+    return nearbyPartners
+      .map(p => {
+        let score = 0;
+        const specialties = p.specialties.map(s => s.toLowerCase());
+        const services = p.services_offered.map(s => s.toLowerCase());
+        
+        // High priority: Match in partName
+        if (specialties.some(s => partName.includes(s)) || services.some(s => partName.includes(s))) {
+          score += 10;
+        }
+        
+        // Medium priority: Match in diagnosis
+        if (specialties.some(s => diagnosis.includes(s)) || services.some(s => diagnosis.includes(s))) {
+          score += 5;
+        }
+
+        // Low priority: Match in general user input
+        if (specialties.some(s => userInput.includes(s)) || services.some(s => userInput.includes(s))) {
+          score += 2;
+        }
+
+        return { ...p, matchScore: score };
+      })
+      .filter(p => p.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 3);
   }, [nearbyPartners, state.userInput, state.result]);
 
   const PartnerProgramSection = useMemo(() => (
@@ -370,13 +410,23 @@ const App: React.FC = () => {
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
-          <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md">
+          <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative">
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
               placeholder={state.mode === RegionMode.WESTERN ? "Enter VIN or describe problem..." : "ژمارا شاسی یان ئاریشێ بنڤیسە..."} 
               value={state.userInput} 
               onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
             />
+            <button 
+              onClick={() => toggleVINScanner(true)}
+              className="absolute bottom-4 right-4 w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 hover:bg-cyan-500/30 transition-all active:scale-90"
+              title="Scan VIN"
+            >
+              <div className="flex flex-col items-center">
+                <span className="text-xl">🔍</span>
+                <span className="text-[6px] font-black uppercase tracking-tighter">Scan VIN</span>
+              </div>
+            </button>
           </div>
           <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
             {state.image ? (
@@ -434,6 +484,7 @@ const App: React.FC = () => {
         </div>
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} onOpenWizardDirect={() => toggleWizardDirect(true)} recommendedPartners={recommendedPartners} /></div>}
         {state.isWizardDirectOpen && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><WizardDirectView mode={state.mode} onClose={() => toggleWizardDirect(false)} /></div>}
+        {state.isVINScannerOpen && <VINScanner onScan={handleVINScan} onClose={() => toggleVINScanner(false)} />}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
     );
