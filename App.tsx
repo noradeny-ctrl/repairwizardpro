@@ -12,6 +12,8 @@ import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 
+console.log("Checking API Key availability...", !!import.meta.env.VITE_GEMINI_API_KEY);
+
 enum OperationType {
   CREATE = 'create',
   UPDATE = 'update',
