@@ -239,9 +239,9 @@ const App: React.FC = () => {
         status: 'diagnosed',
         createdAt: new Date().toISOString(),
         vehicleInfo: analysis.vinScanData ? {
-          make: analysis.vinScanData.make,
-          model: analysis.vinScanData.model,
-          year: analysis.vinScanData.year
+          make: analysis.vinScanData.make || 'Unknown',
+          model: analysis.vinScanData.model || 'Unknown',
+          year: analysis.vinScanData.year || 0
         } : null
       };
       
