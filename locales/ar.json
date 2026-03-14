@@ -1,0 +1,58 @@
+{
+  "common": {
+    "retry": "إعادة المحاولة",
+    "error_title": "خطأ في الاتصال",
+    "describe_problem": "صف المشكلة...",
+    "add_photo": "إضافة صورة",
+    "start_analysis": "بدء بروتوكول الإصلاح",
+    "analyzing": "جاري التحليل...",
+    "reset": "بدء بروتوكول جديد",
+    "verified_experts": "خبراء معتمدون لهذه المشكلة",
+    "shop_parts": "تسوق قطع الغيار الأصلية",
+    "view_guide": "عرض دليل الخطوات",
+    "interactive_protocol": "بروتوكول تفاعلي",
+    "wizard_report": "تقرير الخبير",
+    "placeholder_problem": "صف المشكلة...",
+    "photo_label": "إضافة صورة",
+    "guide_title": "دليل الخطوات التقنية",
+    "tools_title": "الأدوات المطلوبة",
+    "safety_title": "تنبيه سلامة حرج",
+    "active_task": "المهمة الحالية",
+    "system_restored": "تم استعادة النظام",
+    "protocol_status": "حالة البروتوكول",
+    "mission_complete": "اكتملت المهمة",
+    "remaining": "متبقي",
+    "b2b_terminal": "محطة B2B"
+  },
+  "terminal": {
+    "title": "Trans-Global",
+    "version": "محطة التصدير v2.0",
+    "hero_title": "من أمريكا إلى كوردستان",
+    "hero_desc": "خط لوجستي مباشر من المزادات الأمريكية إلى جمارك زاخو. حساب تكلفة الوصول وتتبع VIN في الوقت الفعلي.",
+    "calc_title": "حاسبة تكلفة الوصول",
+    "auction_price": "سعر المزاد (دولار)",
+    "bid_placeholder": "أدخل مبلغ المزايدة...",
+    "auction_fees": "رسوم المزاد (تقديرية)",
+    "inland_towing": "النقل الداخلي في أمريكا",
+    "ocean_freight": "الشحن البحري (مرسين)",
+    "transit_zakho": "النقل إلى زاخو",
+    "krg_customs": "جمارك الإقليم (7%)",
+    "total_price": "إجمالي سعر التوصيل",
+    "track_title": "تتبع حالة VIN",
+    "vin_placeholder": "أدخل رقم الشاصي (17 حرفاً)...",
+    "idle": "المحطة في وضع الاستعداد",
+    "disclaimer": "تنبيه: هذه الحسابات تقديرية بناءً على رسوم الموانئ وأنظمة الجمارك في الإقليم لشهر آذار 2026. قد يختلف السعر النهائي.",
+    "steps": {
+      "us_port": "في الميناء الأمريكي",
+      "ocean": "في المحيط",
+      "mersin": "وصل إلى مرسين",
+      "zakho": "خرج من جمارك زاخو"
+    }
+  },
+  "modes": {
+    "badinan": "Badînî",
+    "sorani": "Soranî",
+    "arabic": "العربية",
+    "western": "English"
+  }
+}

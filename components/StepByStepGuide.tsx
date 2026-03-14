@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Wrench, ShieldAlert, Target, Zap, Activity, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
@@ -14,6 +15,7 @@ interface StepByStepGuideProps {
 }
 
 const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, onClose, safetyWarning, toolsNeeded = [] }) => {
+  const { t } = useTranslation();
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const isRTL = mode !== RegionMode.WESTERN;
 
@@ -49,18 +51,6 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
 
   const firstUncompletedIndex = instructions.findIndex((_, i) => !completedSteps.includes(i));
 
-  const getTitle = () => {
-    if (mode === RegionMode.ARABIC) return 'دليل الخطوات التقنية';
-    if (mode === RegionMode.BADINAN || mode === RegionMode.SORANI) return 'رێبەرێ گاڤ ب گاڤ';
-    return 'TECHNICAL STEP-BY-STEP GUIDE';
-  };
-
-  const getToolsTitle = () => {
-    if (mode === RegionMode.ARABIC) return 'الأدوات المطلوبة';
-    if (mode === RegionMode.BADINAN || mode === RegionMode.SORANI) return 'ئامرازێن پێدڤی';
-    return 'REQUIRED EQUIPMENT';
-  };
-
   const getAmazonToolUrl = (tool: string) => {
     const storeId = import.meta.env.VITE_AMAZON_STORE_ID || 'repairwizar0d-20';
     return `https://www.amazon.com/s?k=${encodeURIComponent(tool)}&tag=${storeId}`;
@@ -78,7 +68,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
       <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-xl sticky top-0 z-50">
         <div className="flex flex-col">
           <h2 className="font-black text-[10px] tracking-[0.3em] uppercase text-cyan-500 mb-2">
-            {getTitle()}
+            {t('common.guide_title')}
           </h2>
           <div className="flex items-center gap-3">
              <div className="w-32 h-2 bg-slate-800 rounded-full overflow-hidden border border-white/5">
@@ -103,7 +93,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
           <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-[2rem] flex gap-4 items-start animate-pulse">
             <ShieldAlert className="text-red-500 shrink-0" size={24} />
             <div>
-              <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">{getSafetyTitle()}</h4>
+              <h4 className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">{t('common.safety_title')}</h4>
               <p className="text-xs text-red-200/80 leading-relaxed">{safetyWarning}</p>
             </div>
           </div>
@@ -113,7 +103,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
           <div className="p-6 bg-slate-900/60 border border-white/5 rounded-[2rem] space-y-4">
             <div className="flex items-center gap-2">
               <Wrench size={14} className="text-cyan-500" />
-              <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest">{getToolsTitle()}</h4>
+              <h4 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest">{t('common.tools_title')}</h4>
             </div>
             <div className="flex flex-wrap gap-2">
               {toolsNeeded.map((tool, i) => (
@@ -203,7 +193,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
                     <div className="flex items-center gap-2 mb-1">
                       {isCurrent && !isCompleted && (
                         <span className="text-[8px] font-black bg-cyan-500 text-white px-1.5 py-0.5 rounded uppercase tracking-tighter animate-pulse">
-                          Active Task
+                          {t('common.active_task')}
                         </span>
                       )}
                       <span className={`text-[9px] font-mono font-bold ${isCompleted ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -239,7 +229,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
             </div>
             <div>
               <p className={`text-[10px] font-black uppercase tracking-widest ${progress === 100 ? 'text-emerald-400' : 'text-cyan-400'}`}>
-                {progress === 100 ? 'System Restored' : 'Protocol Status'}
+                {progress === 100 ? t('common.system_restored') : t('common.protocol_status')}
               </p>
               <p className="text-xs text-slate-400 font-mono">
                 {completedSteps.length}/{instructions.length} <span className="opacity-50">VERIFIED_NODES</span>
@@ -253,11 +243,11 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
                 animate={{ scale: 1, opacity: 1 }}
                 className="bg-emerald-500 text-white text-[10px] font-black px-4 py-2 rounded-xl uppercase tracking-tighter shadow-[0_0_20px_rgba(16,185,129,0.4)]"
               >
-                Mission Complete
+                {t('common.mission_complete')}
               </motion.div>
             ) : (
               <div className="flex flex-col items-end">
-                <span className="text-[10px] font-black text-slate-500 mb-1">REMAINING</span>
+                <span className="text-[10px] font-black text-slate-500 mb-1">{t('common.remaining')}</span>
                 <span className="text-sm font-bold text-white font-mono">{instructions.length - completedSteps.length}</span>
               </div>
             )}

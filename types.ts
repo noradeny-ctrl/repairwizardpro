@@ -37,7 +37,7 @@ export interface Partner {
 
 export interface AnalysisResult {
   diagnosis: string;
-  resultType: 'FIX' | 'TEST' | 'LEARN';
+  resultType: 'FIX' | 'TEST' | 'LEARN' | 'VIN_SCAN';
   partName: string;
   toolsNeeded: string[];
   instructions: string[];
@@ -45,6 +45,16 @@ export interface AnalysisResult {
   tip: string;
   isKurdish: boolean;
   markdownOutput: string; // The full dashboard output
+  vinScanData?: {
+    vin: string;
+    make: string;
+    model: string;
+    year: string;
+    engine?: string;
+    trim?: string;
+  };
+  repairCost?: number;
+  marketValue?: number;
 }
 
 export interface AppState {

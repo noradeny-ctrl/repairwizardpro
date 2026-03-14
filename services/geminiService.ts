@@ -20,6 +20,8 @@ VISUAL FORMATTING (COMMAND CENTER UI):
 
 MODULE 1: APPLIANCE & VEHICLE DIAGNOSTICS
 - Technical Protocol: Provide clear, numbered, concise technical steps necessary for the repair. Every DIY repair guide MUST contain at least 10 numbered steps.
+- VIN SCAN: If the input is a 17-digit VIN or an image of a VIN plate, set resultType to 'VIN_SCAN' and decode the vehicle specs.
+- COST ANALYSIS: For all repairs, estimate the 'repairCost' and the vehicle's 'marketValue' in USD.
 - Iraqi Localization:
   - Prioritize "Power Surge" diagnostics (Mowlida/Grid switching instability).
   - Communicate in Badini Kurdish (Duhok/Zakho dialect), Sorani Kurdish (Erbil/Sulaymaniyah), or Iraqi Arabic when requested.
@@ -71,7 +73,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
           type: Type.OBJECT,
           properties: {
             diagnosis: { type: Type.STRING },
-            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN"] },
+            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN", "VIN_SCAN"] },
             partName: { type: Type.STRING },
             toolsNeeded: { 
               type: Type.ARRAY,
@@ -84,7 +86,20 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
             safetyWarning: { type: Type.STRING },
             tip: { type: Type.STRING },
             isKurdish: { type: Type.BOOLEAN },
-            markdownOutput: { type: Type.STRING }
+            markdownOutput: { type: Type.STRING },
+            vinScanData: {
+              type: Type.OBJECT,
+              properties: {
+                vin: { type: Type.STRING },
+                make: { type: Type.STRING },
+                model: { type: Type.STRING },
+                year: { type: Type.STRING },
+                engine: { type: Type.STRING },
+                trim: { type: Type.STRING }
+              }
+            },
+            repairCost: { type: Type.NUMBER },
+            marketValue: { type: Type.NUMBER }
           },
           required: ["diagnosis", "resultType", "partName", "toolsNeeded", "instructions", "tip", "isKurdish", "markdownOutput"]
         }

@@ -1,0 +1,58 @@
+{
+  "common": {
+    "retry": "Retry Connection",
+    "error_title": "Wizard Connection Error",
+    "describe_problem": "Describe problem...",
+    "add_photo": "Add Photo",
+    "start_analysis": "Initialize Repair Protocol",
+    "analyzing": "Analyzing...",
+    "reset": "Initialize New Protocol",
+    "verified_experts": "VERIFIED EXPERTS FOR THIS PROBLEM",
+    "shop_parts": "SHOP GENUINE REPLACEMENT PARTS",
+    "view_guide": "VIEW STEP-BY-STEP GUIDE",
+    "interactive_protocol": "Interactive Protocol",
+    "wizard_report": "WIZARD REPORT",
+    "placeholder_problem": "Describe problem...",
+    "photo_label": "Add Photo",
+    "guide_title": "TECHNICAL STEP-BY-STEP GUIDE",
+    "tools_title": "REQUIRED EQUIPMENT",
+    "safety_title": "CRITICAL SAFETY ALERT",
+    "active_task": "Active Task",
+    "system_restored": "System Restored",
+    "protocol_status": "Protocol Status",
+    "mission_complete": "Mission Complete",
+    "remaining": "REMAINING",
+    "b2b_terminal": "B2B Terminal"
+  },
+  "terminal": {
+    "title": "Trans-Global",
+    "version": "Export Terminal v2.0",
+    "hero_title": "USA TO KURDISTAN",
+    "hero_desc": "Direct logistics pipeline from US Auctions (Copart, IAAI) to Zakho Customs. Real-time landed cost calculation and VIN tracking.",
+    "calc_title": "Landed Cost Calculator",
+    "auction_price": "US Auction Price (USD)",
+    "bid_placeholder": "Enter bid amount...",
+    "auction_fees": "Auction Fees (Est.)",
+    "inland_towing": "US Inland Towing",
+    "ocean_freight": "Ocean Freight (Mersin)",
+    "transit_zakho": "Transit to Zakho",
+    "krg_customs": "KRG Customs (7%)",
+    "total_price": "Total Delivered Price",
+    "track_title": "Track VIN Status",
+    "vin_placeholder": "Enter 17-digit VIN...",
+    "idle": "Terminal Idle",
+    "disclaimer": "Disclaimer: Calculations are estimates based on standard port fees and KRG customs regulations as of March 2026. Final price may vary based on vehicle weight, auction location, and specific customs classification.",
+    "steps": {
+      "us_port": "At US Port",
+      "ocean": "On Ocean",
+      "mersin": "Arrived Mersin",
+      "zakho": "Cleared Zakho Customs"
+    }
+  },
+  "modes": {
+    "badinan": "Badînî",
+    "sorani": "Soranî",
+    "arabic": "العربية",
+    "western": "English"
+  }
+}

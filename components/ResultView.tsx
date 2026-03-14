@@ -1,41 +1,37 @@
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import Markdown from 'react-markdown';
 import { AnalysisResult, RegionMode, Partner } from '../types';
 import PartnerCard from './PartnerCard';
 import StepByStepGuide from './StepByStepGuide';
-import { ListChecks, ShoppingCart, ExternalLink } from 'lucide-react';
+import ImportEstimateTable from './ImportEstimateTable';
+import { PartnerCardSkeleton } from './Skeleton';
+import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle } from 'lucide-react';
 
 interface ResultViewProps {
   result: AnalysisResult;
   mode: RegionMode;
   onReset: () => void;
   recommendedPartners?: Partner[];
+  isPartnersLoading?: boolean;
 }
 
-const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommendedPartners = [] }) => {
+const ResultView: React.FC<ResultViewProps> = ({ 
+  result, 
+  mode, 
+  onReset, 
+  recommendedPartners = [],
+  isPartnersLoading = false
+}) => {
+  const { t } = useTranslation();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const isKurdish = result.isKurdish;
   const isArabic = mode === RegionMode.ARABIC;
   const isRTL = isKurdish || isArabic;
   
-  const getResetLabel = () => {
-    if (mode === RegionMode.BADINAN) return 'پشکنینەکا نوو دەستپێبکە';
-    if (isArabic) return 'بدء بروتوكول جديد';
-    return 'Initialize New Protocol';
-  };
-
-  const getPartnerLabel = () => {
-    if (isArabic) return 'خبراء معتمدون لهذه المشكلة';
-    if (isKurdish) return 'هۆستایێن پشتڕاستکری بۆ ڤێ ئاریشێ';
-    return 'VERIFIED EXPERTS FOR THIS PROBLEM';
-  };
-
-  const getGuideLabel = () => {
-    if (isArabic) return 'عرض دليل الخطوات';
-    if (isKurdish) return 'دیتنا رێبەرێ گاڤ ب گاڤ';
-    return 'VIEW STEP-BY-STEP GUIDE';
-  };
+  const showImportEstimate = result.resultType === 'VIN_SCAN' || 
+    (result.repairCost && result.marketValue && result.repairCost > (result.marketValue * 0.5));
 
   const getAmazonUrl = () => {
     const storeId = import.meta.env.VITE_AMAZON_STORE_ID || 'repairwizar0d-20';
@@ -44,9 +40,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
   };
 
   const getAmazonLabel = () => {
-    if (isArabic) return 'تسوق قطع الغيار الأصلية';
-    if (isKurdish) return 'کڕینا پارچەیێن رەسەن';
-    return 'SHOP GENUINE REPLACEMENT PARTS';
+    return t('common.shop_parts');
   };
 
   return (
@@ -54,7 +48,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
       <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50">
         <div className="flex flex-col">
           <h2 className="font-black text-[10px] tracking-[0.3em] uppercase text-cyan-500 mb-2">
-            {isArabic ? 'تقرير الخبير' : isKurdish ? 'ڕاپۆرتا هۆستای' : 'WIZARD REPORT'}
+            {t('common.wizard_report')}
           </h2>
           <div className="flex items-center gap-3">
              <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -93,9 +87,9 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
                   </div>
                   <div className="text-left">
                     <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-2 animate-pulse">
-                      {mode === RegionMode.BADINAN ? 'پڕۆتۆکۆلا کارلێکەر' : 'Interactive Protocol'}
+                      {t('common.interactive_protocol')}
                     </p>
-                    <p className="text-xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors">{getGuideLabel()}</p>
+                    <p className="text-xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors">{t('common.view_guide')}</p>
                   </div>
                 </div>
                 <div className={`w-12 h-12 rounded-full border border-cyan-500/30 flex items-center justify-center text-cyan-400 transition-all duration-500 group-hover:bg-cyan-500 group-hover:text-white ${isRTL ? 'rotate-180' : 'group-hover:translate-x-2'}`}>
@@ -109,6 +103,20 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
         <section className="animate-slide-up markdown-body prose prose-invert max-w-none">
           <Markdown>{result.markdownOutput.replace(/\\n/g, '\n')}</Markdown>
         </section>
+
+        {showImportEstimate && (
+          <section className="animate-slide-up">
+            {result.repairCost && result.marketValue && result.repairCost > (result.marketValue * 0.5) && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
+                <AlertTriangle className="text-red-500" size={20} />
+                <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                  Repair cost exceeds 50% of market value. Import recommended.
+                </p>
+              </div>
+            )}
+            <ImportEstimateTable vinData={result.vinScanData} marketValue={result.marketValue} />
+          </section>
+        )}
 
         {/* Amazon Affiliate Section */}
         {result.partName && (
@@ -138,16 +146,23 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
         )}
 
         {/* Partners Integrated Directly into Diagnosis Section */}
-        {recommendedPartners.length > 0 && (
+        {(isPartnersLoading || recommendedPartners.length > 0) && (
           <section className="animate-slide-up space-y-6">
             <div className="flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">{getPartnerLabel()}</p>
+              <span className={`w-2 h-2 rounded-full bg-emerald-500 ${isPartnersLoading ? 'animate-ping' : 'animate-pulse'}`}></span>
+              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">{t('common.verified_experts')}</p>
             </div>
             <div className="space-y-4">
-              {recommendedPartners.map(p => (
-                <PartnerCard key={p.id} partner={p} mode={mode} hideImage={true} />
-              ))}
+              {isPartnersLoading ? (
+                <>
+                  <PartnerCardSkeleton />
+                  <PartnerCardSkeleton />
+                </>
+              ) : (
+                recommendedPartners.map(p => (
+                  <PartnerCard key={p.id} partner={p} mode={mode} hideImage={true} />
+                ))
+              )}
             </div>
           </section>
         )}
@@ -155,7 +170,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
       
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24 z-50">
          <button onClick={onReset} className="w-full py-6 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-[2.25rem] text-[10px] font-black uppercase tracking-[0.3em] text-white shadow-2xl active:scale-95 transition-all">
-          {getResetLabel()}
+          {t('common.reset')}
          </button>
       </div>
 

@@ -1,11 +1,13 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
-import { Globe, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Globe, Loader2, Ship } from 'lucide-react';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardIcon from './components/WizardIcon';
+import ExportTerminal from './components/ExportTerminal';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -155,6 +157,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 const App: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<AppState>({
     userInput: '',
     mode: RegionMode.WESTERN,
@@ -164,6 +167,8 @@ const App: React.FC = () => {
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
+  const [isPartnersLoading, setIsPartnersLoading] = useState(false);
+  const [isExportTerminalOpen, setIsExportTerminalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -201,7 +206,11 @@ const App: React.FC = () => {
         { enableHighAccuracy: false, timeout: 5000 }
       );
       // Asynchronously refresh partners list from Firebase
-      fetchActivePartners().then(setLivePartners).catch(console.error);
+      setIsPartnersLoading(true);
+      fetchActivePartners()
+        .then(setLivePartners)
+        .catch(console.error)
+        .finally(() => setIsPartnersLoading(false));
     }
   }, [state.isStarted]);
 
@@ -257,8 +266,15 @@ const App: React.FC = () => {
   }, []);
 
   const setInitialMode = useCallback((mode: RegionMode) => {
+    const langMap: Record<RegionMode, string> = {
+      [RegionMode.WESTERN]: 'en',
+      [RegionMode.BADINAN]: 'ku-BA',
+      [RegionMode.SORANI]: 'ku-SO',
+      [RegionMode.ARABIC]: 'ar'
+    };
+    i18n.changeLanguage(langMap[mode]);
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
-  }, []);
+  }, [i18n]);
 
   const isRTL = state.mode !== RegionMode.WESTERN;
 
@@ -323,7 +339,7 @@ const App: React.FC = () => {
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
             <span className="text-4xl">🧙‍♂️</span>
           </div>
-          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">Wizard Connection Error</h2>
+          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">{t('common.error_title')}</h2>
           <p className="text-slate-300 text-sm mb-8 leading-relaxed">
             {String(state.error)}
           </p>
@@ -331,7 +347,7 @@ const App: React.FC = () => {
             onClick={() => window.location.reload()}
             className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
           >
-            Retry Connection
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -344,7 +360,7 @@ const App: React.FC = () => {
         <SunBackground />
         <DraggableLogo />
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
-          {[{ id: RegionMode.BADINAN, label: 'Badînî', flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: 'Soranî', flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: 'العربية', flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: 'English', flag: <USAFlag className="w-10" /> }].map((m) => (
+          {[{ id: RegionMode.BADINAN, label: t('modes.badinan'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: t('modes.sorani'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: t('modes.arabic'), flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: t('modes.western'), flag: <USAFlag className="w-10" /> }].map((m) => (
             <button key={m.id} onClick={() => setInitialMode(m.id)} className="flex flex-col items-center p-5 rounded-[2rem] bg-slate-800/40 border border-white/5 transition-all hover:bg-emerald-500/10 active:scale-95 shadow-xl backdrop-blur-sm">
               <div className="mb-3 rounded overflow-hidden shadow-md">{m.flag}</div>
               <h2 className="text-sm font-bold">{m.label}</h2>
@@ -367,16 +383,27 @@ const App: React.FC = () => {
             <Globe className="w-5 h-5 text-cyan-400" />
           </div>
           <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsExportTerminalOpen(true)}
+              className="px-4 py-2 bg-slate-800/80 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+            >
+              <Ship size={14} />
+              {t('common.b2b_terminal')}
+            </button>
             <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
           </div>
         </header>
+
+        {isExportTerminalOpen && (
+          <ExportTerminal onClose={() => setIsExportTerminalOpen(false)} />
+        )}
         <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
           <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative">
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
-              placeholder={state.mode === RegionMode.WESTERN ? "Describe problem..." : state.mode === RegionMode.BADINAN ? "ئاریشێ بنڤیسە..." : "کێشەکە بنووسە..."} 
+              placeholder={t('common.describe_problem')} 
               value={state.userInput} 
               onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} 
             />
@@ -388,7 +415,7 @@ const App: React.FC = () => {
               <div className="flex flex-col items-center gap-2 opacity-40">
                 <span className="text-3xl">📸</span>
                 <span className="text-[10px] font-bold uppercase">
-                  {state.mode === RegionMode.BADINAN ? "وێنەیەکێ زێدە بکە" : "Add Photo"}
+                  {t('common.add_photo')}
                 </span>
               </div>
             )}
@@ -413,13 +440,13 @@ const App: React.FC = () => {
               {state.isAnalyzing && <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />}
               <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
                 {state.isAnalyzing 
-                  ? (state.mode === RegionMode.BADINAN ? '⚡ لێگەڕیان...' : '⚡ SCANNING...') 
-                  : (state.mode === RegionMode.BADINAN ? '🔍 دەست ب پشکنینێ بکە' : '🔍 INITIALIZE SCAN')}
+                  ? `⚡ ${t('common.analyzing')}` 
+                  : `🔍 ${t('common.start_analysis')}`}
               </span>
             </div>
           </button>
         </div>
-        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} /></div>}
+        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} /></div>}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
     );
