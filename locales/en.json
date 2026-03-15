@@ -22,7 +22,21 @@
     "protocol_status": "Protocol Status",
     "mission_complete": "Mission Complete",
     "remaining": "REMAINING",
-    "b2b_terminal": "B2B Terminal"
+    "b2b_terminal": "B2B Terminal",
+    "complexity": "COMPLEXITY LEVEL",
+    "est_time": "EST. TIME",
+    "tools_ready": "TOOLS READY",
+    "wizard_insight": "WIZARD INSIGHT",
+    "start_repair": "START REPAIR",
+    "contact_support": "CONTACT SUPPORT",
+    "contact_agent": "CONTACT AGENT",
+    "select_department": "Select Department",
+    "dept_diagnostics": "Diagnostics",
+    "dept_imports": "Imports",
+    "dept_support": "Support",
+    "message_label": "Your Message",
+    "message_placeholder": "How can we help you?",
+    "send_whatsapp": "Send via WhatsApp"
   },
   "terminal": {
     "title": "Trans-Global",

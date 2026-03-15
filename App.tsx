@@ -2,12 +2,14 @@
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe, Loader2, Ship } from 'lucide-react';
+import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardIcon from './components/WizardIcon';
 import ExportTerminal from './components/ExportTerminal';
+import ProtocolInitialization from './components/ProtocolInitialization';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -242,6 +244,7 @@ const App: React.FC = () => {
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
+    const startTime = Date.now();
     try {
       const pureBase64 = state.image?.split(',')[1];
       const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
@@ -302,30 +305,60 @@ const App: React.FC = () => {
     const partName = state.result.partName.toLowerCase();
     const userInput = state.userInput.toLowerCase();
 
+    // Enhanced Scoring Logic with Fuzzy Matching
     return nearbyPartners
       .map(p => {
         let score = 0;
-        const specialties = p.specialties.map(s => s.toLowerCase());
-        const services = p.services_offered.map(s => s.toLowerCase());
         
-        // High priority: Match in partName
-        if (specialties.some(s => partName.includes(s)) || services.some(s => partName.includes(s))) {
-          score += 10;
-        }
-        
-        // Medium priority: Match in diagnosis
-        if (specialties.some(s => diagnosis.includes(s)) || services.some(s => diagnosis.includes(s))) {
-          score += 5;
-        }
+        // Prepare Fuse instances for fuzzy matching on partner attributes
+        const specialtiesFuse = new Fuse(p.specialties, { 
+          includeScore: true,
+          threshold: 0.35, 
+          distance: 100 
+        });
+        const servicesFuse = new Fuse(p.services_offered, { 
+          includeScore: true,
+          threshold: 0.4, 
+          distance: 100 
+        });
 
-        // Low priority: Match in general user input
-        if (specialties.some(s => userInput.includes(s)) || services.some(s => userInput.includes(s))) {
-          score += 2;
+        const calculateContextScore = (query: string, weight: number) => {
+          if (!query) return 0;
+          let matchScore = 0;
+          
+          // Check specialties (weighted 1.5x for expertise)
+          const specResults = specialtiesFuse.search(query);
+          if (specResults.length > 0) {
+            // Fuse score 0 is perfect, 1 is no match
+            matchScore += (1 - (specResults[0].score || 0)) * weight * 1.5;
+          }
+
+          // Check services (standard weight)
+          const servResults = servicesFuse.search(query);
+          if (servResults.length > 0) {
+            matchScore += (1 - (servResults[0].score || 0)) * weight;
+          }
+
+          return matchScore;
+        };
+
+        // 1. Critical Match: Part Name (Highest Priority)
+        score += calculateContextScore(partName, 15);
+
+        // 2. Contextual Match: Diagnosis (Medium Priority)
+        score += calculateContextScore(diagnosis, 8);
+
+        // 3. User Intent Match: User Input (Low Priority)
+        score += calculateContextScore(userInput, 4);
+
+        // 4. Proximity Bonus (Boost for hyper-local experts)
+        if (p.distance && p.distance < 15) {
+          score += (1 - (p.distance / 15)) * 3;
         }
 
         return { ...p, matchScore: score };
       })
-      .filter(p => p.matchScore > 0)
+      .filter(p => p.matchScore > 2) // Filter out low-confidence matches
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 3);
   }, [nearbyPartners, state.userInput, state.result]);
@@ -397,7 +430,9 @@ const App: React.FC = () => {
         </header>
 
         {isExportTerminalOpen && (
-          <ExportTerminal onClose={() => setIsExportTerminalOpen(false)} />
+          <ExportTerminal 
+            onClose={() => setIsExportTerminalOpen(false)} 
+          />
         )}
         <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
           <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative">
@@ -446,6 +481,7 @@ const App: React.FC = () => {
             </div>
           </button>
         </div>
+        {state.isAnalyzing && <ProtocolInitialization />}
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} /></div>}
         <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>

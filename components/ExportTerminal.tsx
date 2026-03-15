@@ -1,10 +1,17 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ship, Truck, Calculator, Search, Globe, ChevronRight, CheckCircle2, AlertTriangle, DollarSign } from 'lucide-react';
+import { Ship, Truck, Calculator, Search, Globe, ChevronRight, CheckCircle2, AlertTriangle, DollarSign, BarChart3, History, Zap, Info, Save } from 'lucide-react';
 
 interface ExportTerminalProps {
   onClose: () => void;
+}
+
+interface SavedEstimate {
+  id: string;
+  price: number;
+  total: number;
+  date: string;
 }
 
 const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
@@ -12,6 +19,13 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
   const [auctionPrice, setAuctionPrice] = useState<string>('');
   const [vinSearch, setVinSearch] = useState<string>('');
   const [isTracking, setIsTracking] = useState(false);
+  const [savedEstimates, setSavedEstimates] = useState<SavedEstimate[]>([]);
+
+  // Load saved estimates
+  useEffect(() => {
+    const saved = localStorage.getItem('wizard_estimates');
+    if (saved) setSavedEstimates(JSON.parse(saved));
+  }, []);
 
   // Landed Cost Calculation Logic
   const calculations = useMemo(() => {
@@ -31,8 +45,10 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
     const oceanFreight = 1200;
     const transitZakho = 400;
     const krgCustoms = price * 0.07;
+    const docFees = 150;
+    const storageBuffer = 100;
 
-    const total = price + auctionFees + inlandTowing + oceanFreight + transitZakho + krgCustoms;
+    const total = price + auctionFees + inlandTowing + oceanFreight + transitZakho + krgCustoms + docFees + storageBuffer;
 
     return {
       auctionFees,
@@ -40,15 +56,36 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
       oceanFreight,
       transitZakho,
       krgCustoms,
+      docFees,
+      storageBuffer,
       total
     };
   }, [auctionPrice]);
+
+  const handleSaveEstimate = () => {
+    if (!calculations) return;
+    const newEstimate: SavedEstimate = {
+      id: Math.random().toString(36).substr(2, 9),
+      price: parseFloat(auctionPrice),
+      total: calculations.total,
+      date: new Date().toLocaleDateString()
+    };
+    const updated = [newEstimate, ...savedEstimates].slice(0, 5);
+    setSavedEstimates(updated);
+    localStorage.setItem('wizard_estimates', JSON.stringify(updated));
+  };
 
   const shippingSteps = [
     { status: t('terminal.steps.us_port'), date: 'March 10, 2026', completed: true, icon: <Truck className="w-5 h-5" /> },
     { status: t('terminal.steps.ocean'), date: 'March 14, 2026', completed: true, icon: <Ship className="w-5 h-5" /> },
     { status: t('terminal.steps.mersin'), date: 'April 02, 2026', completed: false, icon: <Globe className="w-5 h-5" /> },
     { status: t('terminal.steps.zakho'), date: 'April 05, 2026', completed: false, icon: <CheckCircle2 className="w-5 h-5" /> },
+  ];
+
+  const marketTrends = [
+    { model: 'Toyota Camry 2022', avgBid: '$12,500', trend: '+2.4%', color: 'text-emerald-400' },
+    { model: 'Jeep Grand Cherokee 2021', avgBid: '$18,200', trend: '-1.1%', color: 'text-red-400' },
+    { model: 'Hyundai Elantra 2023', avgBid: '$9,800', trend: '+0.8%', color: 'text-emerald-400' },
   ];
 
   return (
@@ -58,6 +95,9 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] bg-[#010409] text-slate-100 font-sans overflow-y-auto"
     >
+      {/* Scanline Overlay */}
+      <div className="fixed inset-0 pointer-events-none z-[110] opacity-[0.03] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+
       {/* Cyber Header */}
       <header className="sticky top-0 z-50 bg-[#010409]/80 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
@@ -69,143 +109,259 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('terminal.version')}</p>
           </div>
         </div>
-        <button 
-          onClick={onClose}
-          className="w-10 h-10 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/50 transition-all"
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+            <Zap size={12} className="text-emerald-400" />
+            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">System Online</span>
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-slate-900 border border-white/10 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500/50 transition-all"
+          >
+            ✕
+          </button>
+        </div>
       </header>
 
-      <main className="max-w-4xl mx-auto p-6 space-y-8">
+      <main className="max-w-6xl mx-auto p-6 space-y-8">
         {/* Hero Section */}
         <section className="relative rounded-[2.5rem] overflow-hidden bg-slate-900/40 border border-white/5 p-8">
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Ship size={200} className="text-cyan-500" />
           </div>
-          <div className="relative z-10">
-            <h2 className="font-orbitron text-3xl font-black text-white mb-4 tracking-tighter">{t('terminal.hero_title')}</h2>
-            <p className="text-slate-400 text-sm max-w-md leading-relaxed">
-              {t('terminal.hero_desc')}
-            </p>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="max-w-xl">
+              <h2 className="font-orbitron text-4xl font-black text-white mb-4 tracking-tighter leading-none">
+                GLOBAL <span className="text-cyan-400">LOGISTICS</span> HUB
+              </h2>
+              <p className="text-slate-400 text-sm leading-relaxed">
+                {t('terminal.hero_desc')}
+              </p>
+            </div>
+            <div className="flex gap-4">
+              <div className="px-6 py-4 bg-black/40 border border-white/5 rounded-2xl text-center">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Active Containers</p>
+                <p className="text-2xl font-orbitron font-black text-white">142</p>
+              </div>
+              <div className="px-6 py-4 bg-black/40 border border-white/5 rounded-2xl text-center">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Avg. Transit</p>
+                <p className="text-2xl font-orbitron font-black text-white">28d</p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-3 gap-8">
           {/* Calculator Card */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-8 space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Calculator className="text-emerald-400 w-5 h-5" />
-              <h3 className="font-orbitron text-sm font-bold text-emerald-400 uppercase tracking-widest">{t('terminal.calc_title')}</h3>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">{t('terminal.auction_price')}</label>
-                <div className="relative">
-                  <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
-                  <input 
-                    type="number"
-                    value={auctionPrice}
-                    onChange={(e) => setAuctionPrice(e.target.value)}
-                    placeholder={t('terminal.bid_placeholder')}
-                    className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-mono focus:border-emerald-500/50 focus:ring-0 transition-all"
-                  />
+          <div className="lg:col-span-2 space-y-8">
+            <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-8 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500/50" />
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <Calculator className="text-emerald-400 w-5 h-5" />
+                  <h3 className="font-orbitron text-sm font-bold text-emerald-400 uppercase tracking-widest">{t('terminal.calc_title')}</h3>
                 </div>
+                {calculations && (
+                  <button 
+                    onClick={handleSaveEstimate}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-bold text-slate-300 transition-all"
+                  >
+                    <Save size={12} />
+                    SAVE
+                  </button>
+                )}
               </div>
 
-              {calculations && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="space-y-3 pt-4 border-t border-white/5"
-                >
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{t('terminal.auction_fees')}</span>
-                    <span className="font-mono text-white">${calculations.auctionFees.toFixed(0)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{t('terminal.inland_towing')}</span>
-                    <span className="font-mono text-white">${calculations.inlandTowing}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{t('terminal.ocean_freight')}</span>
-                    <span className="font-mono text-white">${calculations.oceanFreight}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{t('terminal.transit_zakho')}</span>
-                    <span className="font-mono text-white">${calculations.transitZakho}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-slate-500">{t('terminal.krg_customs')}</span>
-                    <span className="font-mono text-white">${calculations.krgCustoms.toFixed(0)}</span>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">{t('terminal.auction_price')}</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+                      <input 
+                        type="number"
+                        value={auctionPrice}
+                        onChange={(e) => setAuctionPrice(e.target.value)}
+                        placeholder={t('terminal.bid_placeholder')}
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-mono focus:border-emerald-500/50 focus:ring-0 transition-all"
+                      />
+                    </div>
                   </div>
 
-                  <div className="mt-6 p-6 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
-                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-2">{t('terminal.total_price')}</p>
-                    <p className="font-orbitron text-4xl font-black text-white tracking-tighter">
-                      ${calculations.total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  <div className="p-4 bg-white/5 border border-white/5 rounded-2xl space-y-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Info size={12} className="text-slate-500" />
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Fee Breakdown</span>
+                    </div>
+                    {calculations ? (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">Auction Fees</span>
+                          <span className="font-mono text-white">${calculations.auctionFees.toFixed(0)}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">Inland Towing</span>
+                          <span className="font-mono text-white">${calculations.inlandTowing}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">Ocean Freight</span>
+                          <span className="font-mono text-white">${calculations.oceanFreight}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">KRG Customs</span>
+                          <span className="font-mono text-white">${calculations.krgCustoms.toFixed(0)}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">Documentation</span>
+                          <span className="font-mono text-white">${calculations.docFees}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-slate-600 italic">Enter price to see breakdown...</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col justify-center">
+                  {calculations ? (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="p-8 bg-emerald-500/10 border border-emerald-500/20 rounded-[2.5rem] text-center shadow-[0_0_50px_rgba(16,185,129,0.1)]"
+                    >
+                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-4">{t('terminal.total_price')}</p>
+                      <p className="font-orbitron text-6xl font-black text-white tracking-tighter mb-2">
+                        ${calculations.total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </p>
+                      <div className="flex items-center justify-center gap-2 text-[10px] text-emerald-500/60 font-bold uppercase tracking-widest">
+                        <Zap size={10} />
+                        Landed in Zakho
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
+                      <Calculator size={64} className="mb-4" />
+                      <p className="text-xs font-bold uppercase tracking-widest">Awaiting Input</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Tracking Card */}
+            <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-8 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500/50" />
+              <div className="flex items-center gap-3 mb-2">
+                <Search className="text-cyan-400 w-5 h-5" />
+                <h3 className="font-orbitron text-sm font-bold text-cyan-400 uppercase tracking-widest">{t('terminal.track_title')}</h3>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-1 space-y-4">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      value={vinSearch}
+                      onChange={(e) => setVinSearch(e.target.value.toUpperCase())}
+                      placeholder={t('terminal.vin_placeholder')}
+                      className="flex-1 bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white font-mono text-xs focus:border-cyan-500/50 focus:ring-0 transition-all"
+                    />
+                    <button 
+                      onClick={() => vinSearch.length === 17 && setIsTracking(true)}
+                      className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 rounded-2xl transition-all active:scale-95"
+                    >
+                      <ChevronRight />
+                    </button>
+                  </div>
+                  <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl">
+                    <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-1">Tracking Info</p>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">
+                      Enter your 17-digit VIN to track your vehicle's journey from US ports to Ibrahim Khalil.
                     </p>
                   </div>
-                </motion.div>
-              )}
+                </div>
+
+                <div className="md:col-span-2">
+                  {isTracking ? (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="grid grid-cols-2 md:grid-cols-4 gap-4"
+                    >
+                      {shippingSteps.map((step, i) => (
+                        <div key={i} className="flex flex-col items-center text-center gap-3">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${
+                            step.completed 
+                              ? 'bg-cyan-500 border-cyan-400 text-white shadow-[0_0_20px_rgba(34,211,238,0.3)]' 
+                              : 'bg-slate-900 border-white/10 text-slate-600'
+                          }`}>
+                            {step.icon}
+                          </div>
+                          <div>
+                            <p className={`text-[10px] font-bold uppercase tracking-tighter ${step.completed ? 'text-white' : 'text-slate-500'}`}>{step.status}</p>
+                            <p className="text-[8px] font-mono text-slate-600 mt-1">{step.date}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
+                      <Globe size={48} className="mb-4" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">Global Tracking Inactive</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Tracking Card */}
-          <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-8 space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <Search className="text-cyan-400 w-5 h-5" />
-              <h3 className="font-orbitron text-sm font-bold text-cyan-400 uppercase tracking-widest">{t('terminal.track_title')}</h3>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex gap-2">
-                <input 
-                  type="text"
-                  value={vinSearch}
-                  onChange={(e) => setVinSearch(e.target.value.toUpperCase())}
-                  placeholder={t('terminal.vin_placeholder')}
-                  className="flex-1 bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white font-mono text-sm focus:border-cyan-500/50 focus:ring-0 transition-all"
-                />
-                <button 
-                  onClick={() => vinSearch.length === 17 && setIsTracking(true)}
-                  className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 rounded-2xl transition-all active:scale-95"
-                >
-                  <ChevronRight />
-                </button>
+          {/* Sidebar Intelligence */}
+          <div className="space-y-8">
+            {/* Market Trends */}
+            <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="text-cyan-400 w-4 h-4" />
+                <h3 className="font-orbitron text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Market Intelligence</h3>
               </div>
-
-              {isTracking && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-8 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-slate-800"
-                >
-                  {shippingSteps.map((step, i) => (
-                    <div key={i} className="relative flex gap-6 items-start">
-                      <div className={`z-10 w-10 h-10 rounded-xl flex items-center justify-center border transition-all ${
-                        step.completed 
-                          ? 'bg-cyan-500 border-cyan-400 text-white shadow-[0_0_15px_rgba(34,211,238,0.4)]' 
-                          : 'bg-slate-900 border-white/10 text-slate-600'
-                      }`}>
-                        {step.icon}
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold ${step.completed ? 'text-white' : 'text-slate-500'}`}>{step.status}</p>
-                        <p className="text-[10px] font-mono text-slate-500 mt-1 uppercase">{step.date}</p>
-                      </div>
+              <div className="space-y-4">
+                {marketTrends.map((trend, i) => (
+                  <div key={i} className="p-4 bg-black/40 border border-white/5 rounded-2xl flex justify-between items-center">
+                    <div>
+                      <p className="text-[10px] font-bold text-white mb-1">{trend.model}</p>
+                      <p className="text-[9px] font-mono text-slate-500">Avg. Bid: {trend.avgBid}</p>
                     </div>
-                  ))}
-                </motion.div>
-              )}
-
-              {!isTracking && (
-                <div className="py-12 flex flex-col items-center justify-center text-center opacity-20">
-                  <Search size={48} className="mb-4" />
-                  <p className="text-xs font-bold uppercase tracking-widest">{t('terminal.idle')}</p>
-                </div>
-              )}
+                    <span className={`text-[10px] font-black ${trend.color}`}>{trend.trend}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Saved Estimates */}
+            <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6">
+              <div className="flex items-center gap-3">
+                <History className="text-slate-400 w-4 h-4" />
+                <h3 className="font-orbitron text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent Estimates</h3>
+              </div>
+              <div className="space-y-3">
+                {savedEstimates.length > 0 ? (
+                  savedEstimates.map((est) => (
+                    <button 
+                      key={est.id} 
+                      onClick={() => setAuctionPrice(est.price.toString())}
+                      className="w-full p-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl flex justify-between items-center transition-all group"
+                    >
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold text-white">${est.price.toLocaleString()}</p>
+                        <p className="text-[8px] text-slate-500 uppercase">{est.date}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-emerald-400 group-hover:scale-110 transition-transform">${est.total.toLocaleString()}</p>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-[10px] text-slate-600 text-center py-4 italic">No saved estimates yet.</p>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -22,7 +22,21 @@
     "protocol_status": "باری پڕۆتۆکۆڵ",
     "mission_complete": "کارەکە تەواو بوو",
     "remaining": "ماوە",
-    "b2b_terminal": "تێرمیناڵی B2B"
+    "b2b_terminal": "تێرمیناڵی B2B",
+    "complexity": "ئاستی زەحمەتی",
+    "est_time": "کاتی خەمڵێنراو",
+    "tools_ready": "ئامرازەکان ئامادەن",
+    "wizard_insight": "ڕوانگەی وەستا",
+    "start_repair": "دەست بە چاککردن بکە",
+    "contact_support": "پەیوەندی بە پشتگیری بکە",
+    "contact_agent": "پەیوەندی بە وەستا بکە",
+    "select_department": "بەشەکە هەڵبژێرە",
+    "dept_diagnostics": "دەستنیشانکردن",
+    "dept_imports": "هاوردەکردن",
+    "dept_support": "پشتگیری",
+    "message_label": "نامەکەت",
+    "message_placeholder": "چۆن دەتوانین یارمەتیت بدەین؟",
+    "send_whatsapp": "ناردن لە ڕێگەی واتسئەپ"
   },
   "terminal": {
     "title": "Trans-Global",

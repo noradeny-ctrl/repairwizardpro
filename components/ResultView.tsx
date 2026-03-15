@@ -65,38 +65,15 @@ const ResultView: React.FC<ResultViewProps> = ({
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
         {result.instructions && result.instructions.length > 0 && (
           <section className="animate-slide-up">
-            {isGuideOpen ? (
-              <div className="border border-cyan-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-cyan-900/20">
-                <StepByStepGuide 
-                  instructions={result.instructions} 
-                  mode={mode} 
-                  onClose={() => setIsGuideOpen(false)} 
-                  safetyWarning={result.safetyWarning}
-                  toolsNeeded={result.toolsNeeded}
-                />
-              </div>
-            ) : (
-              <button 
-                onClick={() => setIsGuideOpen(true)}
-                className="w-full p-8 bg-gradient-to-br from-cyan-600/20 to-cyan-900/40 border-2 border-cyan-500/50 rounded-[2.5rem] flex items-center justify-between group hover:from-cyan-500/30 hover:to-cyan-800/50 transition-all duration-500 shadow-[0_0_30px_rgba(6,182,212,0.15)] hover:shadow-[0_0_40px_rgba(6,182,212,0.25)] relative overflow-hidden"
-              >
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent opacity-50" />
-                <div className="flex items-center gap-6">
-                  <div className="w-16 h-16 rounded-[1.5rem] bg-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center text-white transform group-hover:scale-110 transition-transform duration-500">
-                    <ListChecks size={32} strokeWidth={2.5} />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[11px] font-black text-cyan-400 uppercase tracking-[0.4em] mb-2 animate-pulse">
-                      {t('common.interactive_protocol')}
-                    </p>
-                    <p className="text-xl font-black text-white tracking-tight group-hover:text-cyan-100 transition-colors">{t('common.view_guide')}</p>
-                  </div>
-                </div>
-                <div className={`w-12 h-12 rounded-full border border-cyan-500/30 flex items-center justify-center text-cyan-400 transition-all duration-500 group-hover:bg-cyan-500 group-hover:text-white ${isRTL ? 'rotate-180' : 'group-hover:translate-x-2'}`}>
-                  <ListChecks size={24} />
-                </div>
-              </button>
-            )}
+            <div className="border border-cyan-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-cyan-900/20">
+              <StepByStepGuide 
+                instructions={result.instructions} 
+                mode={mode} 
+                onClose={() => {}} 
+                safetyWarning={result.safetyWarning}
+                toolsNeeded={result.toolsNeeded}
+              />
+            </div>
           </section>
         )}
 

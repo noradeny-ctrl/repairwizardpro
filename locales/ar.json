@@ -22,7 +22,21 @@
     "protocol_status": "حالة البروتوكول",
     "mission_complete": "اكتملت المهمة",
     "remaining": "متبقي",
-    "b2b_terminal": "محطة B2B"
+    "b2b_terminal": "محطة B2B",
+    "complexity": "مستوى التعقيد",
+    "est_time": "الوقت المتوقع",
+    "tools_ready": "الأدوات جاهزة",
+    "wizard_insight": "رؤية الخبير",
+    "start_repair": "بدء الإصلاح",
+    "contact_support": "اتصل بالدعم",
+    "contact_agent": "اتصل بالوكيل",
+    "select_department": "اختر القسم",
+    "dept_diagnostics": "التشخيص",
+    "dept_imports": "الاستيراد",
+    "dept_support": "الدعم",
+    "message_label": "رسالتك",
+    "message_placeholder": "كيف يمكننا مساعدتك؟",
+    "send_whatsapp": "إرسال عبر واتساب"
   },
   "terminal": {
     "title": "Trans-Global",
