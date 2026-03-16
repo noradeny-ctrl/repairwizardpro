@@ -20,12 +20,27 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
   const [vinSearch, setVinSearch] = useState<string>('');
   const [isTracking, setIsTracking] = useState(false);
   const [savedEstimates, setSavedEstimates] = useState<SavedEstimate[]>([]);
+  const [savedVins, setSavedVins] = useState<string[]>([]);
 
-  // Load saved estimates
+  // Load saved data
   useEffect(() => {
-    const saved = localStorage.getItem('wizard_estimates');
-    if (saved) setSavedEstimates(JSON.parse(saved));
+    const savedEst = localStorage.getItem('wizard_estimates');
+    if (savedEst) setSavedEstimates(JSON.parse(savedEst));
+    
+    const savedV = localStorage.getItem('wizard_vins');
+    if (savedV) setSavedVins(JSON.parse(savedV));
   }, []);
+
+  const handleTrack = () => {
+    if (vinSearch.length === 17) {
+      setIsTracking(true);
+      if (!savedVins.includes(vinSearch)) {
+        const updated = [vinSearch, ...savedVins].slice(0, 5);
+        setSavedVins(updated);
+        localStorage.setItem('wizard_vins', JSON.stringify(updated));
+      }
+    }
+  };
 
   // Landed Cost Calculation Logic
   const calculations = useMemo(() => {
@@ -258,25 +273,94 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
 
               <div className="grid md:grid-cols-3 gap-8">
                 <div className="md:col-span-1 space-y-4">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text"
-                      value={vinSearch}
-                      onChange={(e) => setVinSearch(e.target.value.toUpperCase())}
-                      placeholder={t('terminal.vin_placeholder')}
-                      className="flex-1 bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white font-mono text-xs focus:border-cyan-500/50 focus:ring-0 transition-all"
-                    />
-                    <button 
-                      onClick={() => vinSearch.length === 17 && setIsTracking(true)}
-                      className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 rounded-2xl transition-all active:scale-95"
-                    >
-                      <ChevronRight />
-                    </button>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vehicle ID (VIN)</label>
+                      <span className={`text-[10px] font-mono ${vinSearch.length === 17 ? 'text-cyan-400' : 'text-slate-600'}`}>
+                        {vinSearch.length}/17
+                      </span>
+                    </div>
+                    <div className="relative flex gap-2">
+                      <div className="relative flex-1">
+                        <input 
+                          type="text"
+                          maxLength={17}
+                          value={vinSearch}
+                          onChange={(e) => {
+                            const val = e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
+                            setVinSearch(val);
+                          }}
+                          placeholder="ENTER 17-DIGIT VIN"
+                          className={`w-full bg-black/40 border ${vinSearch.length === 17 ? 'border-cyan-500/50' : 'border-white/10'} rounded-2xl py-4 px-6 text-white font-mono text-xs focus:border-cyan-500/50 focus:ring-0 transition-all tracking-widest pr-12`}
+                        />
+                        {vinSearch.length > 0 && (
+                          <button 
+                            onClick={() => {
+                              setVinSearch('');
+                              setIsTracking(false);
+                            }}
+                            className="absolute right-10 top-1/2 -translate-y-1/2 text-slate-600 hover:text-slate-400 transition-colors"
+                          >
+                            ✕
+                          </button>
+                        )}
+                        {vinSearch.length === 17 && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <CheckCircle2 size={14} className="text-cyan-400 animate-bounce" />
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={handleTrack}
+                        disabled={vinSearch.length !== 17}
+                        className={`px-4 rounded-2xl transition-all active:scale-95 ${
+                          vinSearch.length === 17 
+                            ? 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-[0_0_15px_rgba(8,145,178,0.3)]' 
+                            : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                        }`}
+                      >
+                        <ChevronRight />
+                      </button>
+                    </div>
                   </div>
+                  
+                  {savedVins.length > 0 && !isTracking && (
+                    <div className="space-y-2">
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Recent VINs</p>
+                      <div className="flex flex-wrap gap-2">
+                        {savedVins.map(v => (
+                          <button 
+                            key={v}
+                            onClick={() => setVinSearch(v)}
+                            className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-[9px] font-mono text-slate-400 transition-all"
+                          >
+                            {v.substring(0, 4)}...{v.substring(13)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <AnimatePresence>
+                    {vinSearch.length > 0 && vinSearch.length < 17 && (
+                      <motion.p 
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider"
+                      >
+                        * VIN must be exactly 17 characters (No I, O, Q)
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+
                   <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl">
-                    <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest mb-1">Tracking Info</p>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Info size={10} className="text-cyan-500" />
+                      <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">Tracking Intelligence</p>
+                    </div>
                     <p className="text-[10px] text-slate-400 leading-relaxed">
-                      Enter your 17-digit VIN to track your vehicle's journey from US ports to Ibrahim Khalil.
+                      Real-time telemetry from US ports to Ibrahim Khalil. Enter your 17-digit VIN to begin.
                     </p>
                   </div>
                 </div>

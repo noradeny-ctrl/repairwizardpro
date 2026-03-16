@@ -52,9 +52,30 @@ export interface AnalysisResult {
     year: string;
     engine?: string;
     trim?: string;
+    technicalSpecs?: {
+      label: string;
+      value: string;
+    }[];
+    recalls?: {
+      id: string;
+      title: string;
+      date: string;
+      status: 'Open' | 'Closed';
+    }[];
+    auctionHistory?: {
+      date: string;
+      odometer: string;
+      damage: string;
+      location: string;
+      finalBid?: string;
+    }[];
   };
   repairCost?: number;
   marketValue?: number;
+  groundingSources?: {
+    title: string;
+    uri: string;
+  }[];
 }
 
 export interface AppState {

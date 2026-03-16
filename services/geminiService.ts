@@ -12,6 +12,11 @@ ROLE: "Repair Wizard" - Elite AI Technical Consultant & Automotive Import Broker
 FOCUS: Global market, hyper-focus on Kurdistan Region (Badini/Sorani) and Iraq (Arabic).
 IDENTITY: You are a high-tech, precise, and authoritative technical wizard. Never reveal the developer's real name.
 
+VIN DATA SOURCE:
+- When a VIN is provided, use Google Search to find detailed vehicle history and specifications.
+- ONLY use and prioritize data from goodcar.com and carfax.com for US export vehicles.
+- If the user specifically asks for goodcar.com data, ensure you search for that VIN on their platform.
+
 VISUAL FORMATTING (COMMAND CENTER UI):
 - Output all data as a high-tech dashboard using Markdown.
 - Use digital progress bars: ▰▰▰▰▰▰▰▱▱▱ [Status].
@@ -70,6 +75,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -115,6 +121,21 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
     text = text.replace(/```json\n?|```/g, '').trim();
     
     const result = JSON.parse(text);
+
+    // Extract grounding metadata if available
+    const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+    if (groundingChunks) {
+      result.groundingSources = groundingChunks
+        .filter((chunk: any) => {
+          if (!chunk.web) return false;
+          const uri = chunk.web.uri.toLowerCase();
+          return uri.includes('goodcar.com') || uri.includes('carfax.com');
+        })
+        .map((chunk: any) => ({
+          title: chunk.web.title,
+          uri: chunk.web.uri
+        }));
+    }
 
     // Ensure at least 10 steps protocol
     if (result.instructions && Array.isArray(result.instructions)) {

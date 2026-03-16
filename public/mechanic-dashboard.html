@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repair Wizard | Mechanic Command Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-deep: #010409;
+            --neon-emerald: #10b981;
+            --neon-cyan: #00f3ff;
+            --warning-gold: #fbbf24;
+            --text-muted: #8b949e;
+            --card-bg: #0d1117;
+            --border-color: rgba(0, 243, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #ffffff;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to bottom, rgba(0, 243, 255, 0.05), transparent);
+        }
+
+        h1, h2, h3, .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Shop Stats Widget */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--neon-cyan);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            color: #fff;
+        }
+
+        .stat-card.revenue .stat-value {
+            color: var(--warning-gold);
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+        }
+
+        /* Live Feed */
+        .feed-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--neon-emerald);
+            border-radius: 50%;
+            box-shadow: 0 0 0 rgba(16, 185, 129, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .repair-feed {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .lead-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .lead-card:hover {
+            background: rgba(0, 243, 255, 0.02);
+            border-color: rgba(0, 243, 255, 0.3);
+        }
+
+        .vehicle-info h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.25rem;
+            color: #fff;
+        }
+
+        .distance {
+            font-size: 0.85rem;
+            color: var(--neon-cyan);
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .problem-tag {
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.2);
+            color: var(--warning-gold);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+
+        .actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            border: none;
+        }
+
+        .btn-accept {
+            background: var(--neon-emerald);
+            color: #000;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-accept:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
+        }
+
+        .btn-pass {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid rgba(139, 148, 158, 0.3);
+        }
+
+        .btn-pass:hover {
+            background: rgba(139, 148, 158, 0.1);
+            color: #fff;
+        }
+
+        /* Search Bar */
+        .search-container {
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 1px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .lead-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1.5rem;
+            }
+
+            .actions {
+                width: 100%;
+            }
+
+            .btn {
+                flex: 1;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 0.5rem 2rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">REPAIR WIZARD // COMMAND_CENTER</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-family: 'Orbitron';">
+            SYSTEM_STATUS: <span style="color: var(--neon-emerald)">ONLINE</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Shop Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">ACTIVE LEADS</div>
+                <div class="stat-value" id="activeLeads">12</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">JOBS WON (MONTH)</div>
+                <div class="stat-value" id="jobsWon">48</div>
+            </div>
+            <div class="stat-card revenue">
+                <div class="stat-label">EST. PENDING REVENUE</div>
+                <div class="stat-value" id="pendingRevenue">$14,250</div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" id="vehicleSearch" class="search-input" placeholder="SEARCH BY MAKE, MODEL, OR YEAR..." oninput="handleSearch()">
+        </div>
+
+        <!-- Live Feed -->
+        <div class="feed-header">
+            <div class="pulse"></div>
+            <h2>LIVE REPAIR FEED</h2>
+        </div>
+
+        <div class="repair-feed" id="repairFeed">
+            <!-- Leads will be injected here -->
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <span>ENCRYPTED_CONNECTION: AES-256</span>
+        <span>LATENCY: 14ms</span>
+        <span>© 2026 REPAIRWIZARD.NET</span>
+    </div>
+
+    <script>
+        const SHOP_NAME = "Wizard Performance Garage";
+        
+        const mockLeads = [
+            {
+                id: 1,
+                vehicle: "2018 Jeep Wrangler JK",
+                distance: "4.2 Miles Away",
+                problem: "P0300 - Random/Multiple Cylinder Misfire",
+                phone: "9647501234567"
+            },
+            {
+                id: 2,
+                vehicle: "2021 Toyota Land Cruiser",
+                distance: "1.8 Miles Away",
+                problem: "Brake System Malfunction - ABS Light On",
+                phone: "9647507654321"
+            },
+            {
+                id: 3,
+                vehicle: "2019 BMW X5 xDrive40i",
+                distance: "7.5 Miles Away",
+                problem: "Coolant Leak - Overheating Warning",
+                phone: "9647509998887"
+            },
+            {
+                id: 4,
+                vehicle: "2020 Ford F-150 Raptor",
+                distance: "12.3 Miles Away",
+                problem: "Transmission Shifting Issues - 10R80",
+                phone: "9647505554443"
+            }
+        ];
+
+        let activeFilter = "";
+
+        function renderLeads() {
+            const feed = document.getElementById('repairFeed');
+            const filteredLeads = mockLeads.filter(lead => 
+                lead.vehicle.toLowerCase().includes(activeFilter.toLowerCase())
+            );
+
+            if (filteredLeads.length === 0) {
+                feed.innerHTML = `
+                    <div class="lead-card" style="justify-content: center; border-style: dashed; opacity: 0.5;">
+                        <p style="font-family: 'Orbitron'; font-size: 0.8rem; color: var(--text-muted);">NO MATCHING VEHICLES FOUND</p>
+                    </div>
+                `;
+                return;
+            }
+
+            feed.innerHTML = filteredLeads.map(lead => `
+                <div class="lead-card" id="lead-${lead.id}">
+                    <div class="vehicle-info">
+                        <h3>${lead.vehicle}</h3>
+                        <span class="distance">${lead.distance}</span>
+                        <div class="problem-tag">${lead.problem}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-pass" onclick="removeLead(${lead.id})">PASS</button>
+                        <button class="btn btn-accept" onclick="acceptLead(${lead.id})">ACCEPT LEAD</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleSearch() {
+            activeFilter = document.getElementById('vehicleSearch').value;
+            renderLeads();
+        }
+
+        function removeLead(id) {
+            const card = document.getElementById(`lead-${id}`);
+            card.style.opacity = '0';
+            card.style.transform = 'translateX(50px)';
+            setTimeout(() => {
+                card.remove();
+                updateStats(-1);
+            }, 300);
+        }
+
+        function updateStats(change) {
+            const leadsEl = document.getElementById('activeLeads');
+            let current = parseInt(leadsEl.innerText);
+            leadsEl.innerText = Math.max(0, current + change);
+        }
+
+        function acceptLead(id) {
+            const lead = mockLeads.find(l => l.id === id);
+            if (!lead) return;
+
+            // WhatsApp Routing
+            const message = `Hello, this is ${SHOP_NAME} from Repair Wizard. We can fix your ${lead.vehicle} regarding the issue: ${lead.problem}. Can you bring it in today?`;
+            const waUrl = `https://wa.me/${lead.phone}?text=${encodeURIComponent(message)}`;
+            
+            // Visual feedback before redirect
+            const card = document.getElementById(`lead-${id}`);
+            card.style.borderColor = 'var(--neon-emerald)';
+            card.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.2)';
+            
+            setTimeout(() => {
+                window.open(waUrl, '_blank');
+                removeLead(id);
+            }, 500);
+        }
+
+        // Initialize
+        window.onload = renderLeads;
+    </script>
+</body>
+</html>

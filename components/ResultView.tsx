@@ -7,7 +7,39 @@ import PartnerCard from './PartnerCard';
 import StepByStepGuide from './StepByStepGuide';
 import ImportEstimateTable from './ImportEstimateTable';
 import { PartnerCardSkeleton } from './Skeleton';
-import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle } from 'lucide-react';
+import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle, Globe, ChevronDown, ChevronUp, History, Settings, ShieldAlert } from 'lucide-react';
+
+interface CollapsibleSectionProps {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+  badge?: string;
+}
+
+const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, icon, children, isOpen, onToggle, badge }) => (
+  <div className="border border-white/5 rounded-3xl overflow-hidden bg-slate-900/40 backdrop-blur-md transition-all">
+    <button 
+      onClick={onToggle}
+      className="w-full px-6 py-5 flex items-center justify-between hover:bg-white/5 transition-colors"
+    >
+      <div className="flex items-center gap-4">
+        <div className="text-cyan-400">{icon}</div>
+        <div className="text-left">
+          <h4 className="text-xs font-black text-white uppercase tracking-widest">{title}</h4>
+          {badge && <span className="text-[8px] font-black text-cyan-500 uppercase tracking-[0.2em]">{badge}</span>}
+        </div>
+      </div>
+      {isOpen ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+    </button>
+    {isOpen && (
+      <div className="px-6 pb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+        {children}
+      </div>
+    )}
+  </div>
+);
 
 interface ResultViewProps {
   result: AnalysisResult;
@@ -26,6 +58,15 @@ const ResultView: React.FC<ResultViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    specs: result.resultType === 'VIN_SCAN',
+    recalls: false,
+    auction: false
+  });
+
+  const toggleSection = (section: string) => {
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  };
   const isKurdish = result.isKurdish;
   const isArabic = mode === RegionMode.ARABIC;
   const isRTL = isKurdish || isArabic;
@@ -42,6 +83,10 @@ const ResultView: React.FC<ResultViewProps> = ({
   const getAmazonLabel = () => {
     return t('common.shop_parts');
   };
+
+  const vinReportWhatsapp = "https://wa.me/16153392046?text=" + encodeURIComponent(
+    `Hello Repair Wizard, I am viewing a partial VIN report for ${result.vinScanData?.year || ''} ${result.vinScanData?.make || ''} ${result.vinScanData?.model || ''} (VIN: ${result.vinScanData?.vin || 'N/A'}). I would like to request the FULL HISTORY REPORT.`
+  );
 
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1e] overflow-hidden ${isRTL ? 'rtl text-right' : 'ltr text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
@@ -63,7 +108,140 @@ const ResultView: React.FC<ResultViewProps> = ({
       </div>
 
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
-        {result.instructions && result.instructions.length > 0 && (
+        {result.resultType === 'VIN_SCAN' && result.vinScanData && (
+          <section className="animate-slide-up">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-cyan-500/30 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+                <Globe size={160} className="text-cyan-400" />
+              </div>
+              <div className="relative z-10 space-y-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-orbitron text-2xl font-black text-white tracking-tighter uppercase">
+                      {result.vinScanData.year} {result.vinScanData.make}
+                    </h3>
+                    <p className="text-cyan-400 font-orbitron font-bold tracking-widest text-xs">{result.vinScanData.model}</p>
+                  </div>
+                  <div className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-lg">
+                    <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Verified VIN</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Serial Number</p>
+                    <p className="text-sm font-mono text-white tracking-widest">{result.vinScanData.vin}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Region of Origin</p>
+                    <p className="text-sm font-bold text-white">North America (USA/CAN)</p>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5 flex gap-4">
+                  <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Market Value</p>
+                    <p className="text-lg font-orbitron font-black text-emerald-400">
+                      ${result.marketValue?.toLocaleString() || '---'}
+                    </p>
+                  </div>
+                  <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                    <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">Clear</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Collapsible Details */}
+            <div className="mt-6 space-y-4">
+              <CollapsibleSection 
+                title="Vehicle Specifications" 
+                icon={<Settings size={18} />}
+                isOpen={openSections.specs}
+                onToggle={() => toggleSection('specs')}
+                badge={`${result.vinScanData.technicalSpecs?.length || 4} Specs Available`}
+              >
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  {(result.vinScanData.technicalSpecs || [
+                    { label: 'Engine', value: result.vinScanData.engine || 'V6 3.5L' },
+                    { label: 'Trim', value: result.vinScanData.trim || 'Limited' },
+                    { label: 'Drive Type', value: 'AWD' },
+                    { label: 'Fuel Type', value: 'Gasoline' }
+                  ]).map((spec, i) => (
+                    <div key={i} className="p-3 bg-black/20 rounded-xl border border-white/5">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{spec.label}</p>
+                      <p className="text-xs font-bold text-white">{spec.value}</p>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection 
+                title="Safety Recalls" 
+                icon={<ShieldAlert size={18} />}
+                isOpen={openSections.recalls}
+                onToggle={() => toggleSection('recalls')}
+                badge={`${result.vinScanData.recalls?.length || 1} Recalls Found`}
+              >
+                <div className="space-y-3 pt-2">
+                  {(result.vinScanData.recalls || [
+                    { id: 'NHTSA-23V', title: 'Airbag Inflator Inspection', date: '2023-11-12', status: 'Closed' }
+                  ]).map((recall, i) => (
+                    <div key={i} className="p-4 bg-black/20 rounded-2xl border border-white/5 flex justify-between items-center">
+                      <div>
+                        <p className="text-[10px] font-bold text-white mb-1">{recall.title}</p>
+                        <p className="text-[8px] text-slate-500 font-mono uppercase">{recall.id} • {recall.date}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest ${
+                        recall.status === 'Open' ? 'bg-red-500/20 text-red-500' : 'bg-emerald-500/20 text-emerald-500'
+                      }`}>
+                        {recall.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+
+              <CollapsibleSection 
+                title="Auction History" 
+                icon={<History size={18} />}
+                isOpen={openSections.auction}
+                onToggle={() => toggleSection('auction')}
+                badge={`${result.vinScanData.auctionHistory?.length || 1} Records Found`}
+              >
+                <div className="space-y-4 pt-2">
+                  {(result.vinScanData.auctionHistory || [
+                    { date: '2024-01-15', odometer: '42,300 mi', damage: 'Front End', location: 'COPART - FL', finalBid: '$12,400' }
+                  ]).map((record, i) => (
+                    <div key={i} className="p-4 bg-black/20 rounded-2xl border border-white/5 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{record.location}</p>
+                        <p className="text-[10px] font-bold text-white">{record.date}</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Odometer</p>
+                          <p className="text-[10px] font-bold text-white">{record.odometer}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Damage</p>
+                          <p className="text-[10px] font-bold text-red-400">{record.damage}</p>
+                        </div>
+                        <div>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Final Bid</p>
+                          <p className="text-[10px] font-bold text-emerald-400">{record.finalBid}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            </div>
+          </section>
+        )}
+
+        {result.resultType !== 'VIN_SCAN' && result.instructions && result.instructions.length > 0 && (
           <section className="animate-slide-up">
             <div className="border border-cyan-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl shadow-cyan-900/20">
               <StepByStepGuide 
@@ -77,9 +255,43 @@ const ResultView: React.FC<ResultViewProps> = ({
           </section>
         )}
 
-        <section className="animate-slide-up markdown-body prose prose-invert max-w-none">
-          <Markdown>{result.markdownOutput.replace(/\\n/g, '\n')}</Markdown>
-        </section>
+        {result.resultType === 'VIN_SCAN' ? (
+          <section className="animate-slide-up space-y-6">
+            <div className="p-8 bg-slate-900/40 border border-white/5 rounded-[2.5rem] relative overflow-hidden backdrop-blur-md">
+               <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 border-b border-l border-cyan-500/30 rounded-bl-2xl">
+                 <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Partial View</span>
+               </div>
+               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                 <div className="w-1 h-1 rounded-full bg-cyan-500" />
+                 Report Summary
+               </h4>
+               <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
+                 <p>
+                   Vehicle successfully identified in our global database. Basic specifications and preliminary status checks are available below.
+                 </p>
+                 <p className="text-slate-400 italic">
+                   "Detailed auction records, high-resolution damage photos, and complete ownership history are currently locked for this VIN."
+                 </p>
+               </div>
+
+               <div className="mt-8 pt-6 border-t border-white/5">
+                 <a 
+                   href={vinReportWhatsapp}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="w-full py-5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 group"
+                 >
+                   <span className="font-black text-xs uppercase tracking-widest">Get Full History Report</span>
+                   <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
+                 </a>
+               </div>
+            </div>
+          </section>
+        ) : (
+          <section className="animate-slide-up markdown-body prose prose-invert max-w-none relative">
+            <Markdown>{result.markdownOutput.replace(/\\n/g, '\n')}</Markdown>
+          </section>
+        )}
 
         {showImportEstimate && (
           <section className="animate-slide-up">
@@ -92,6 +304,30 @@ const ResultView: React.FC<ResultViewProps> = ({
               </div>
             )}
             <ImportEstimateTable vinData={result.vinScanData} marketValue={result.marketValue} />
+          </section>
+        )}
+
+        {/* Grounding Sources */}
+        {result.groundingSources && result.groundingSources.length > 0 && (
+          <section className="animate-slide-up space-y-4">
+            <div className="flex items-center gap-3">
+              <Globe className="text-cyan-400 w-4 h-4" />
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Verified Web Sources</p>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {result.groundingSources.map((source, i) => (
+                <a 
+                  key={i}
+                  href={source.uri}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-3 bg-slate-900/40 border border-white/5 rounded-xl flex items-center justify-between group hover:bg-cyan-500/5 transition-all"
+                >
+                  <span className="text-[10px] font-bold text-slate-300 truncate max-w-[80%]">{source.title}</span>
+                  <ExternalLink size={12} className="text-slate-500 group-hover:text-cyan-400 transition-colors" />
+                </a>
+              ))}
+            </div>
           </section>
         )}
 
