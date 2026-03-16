@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertTriangle, ShoppingCart, Truck, Activity, Terminal, CheckCircle2, Cpu, Zap, History, ChevronRight, Info, ShieldAlert, Loader2 } from 'lucide-react';
+import { Search, AlertTriangle, ShoppingCart, Truck, Activity, Terminal, CheckCircle2, Cpu, Zap, History, ChevronRight, Info, ShieldAlert, Loader2, Trash2, X } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { RegionMode } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -52,6 +52,15 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
   const resultsRef = useRef<HTMLDivElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
+  const getStatus = () => {
+    if (isSearching || isDeepScanning) return 'SCANNING';
+    if (error) return 'ERROR';
+    if (result) return 'COMPLETE';
+    return 'IDLE';
+  };
+
+  const status = getStatus();
+
   useEffect(() => {
     const saved = localStorage.getItem('obd_recent_scans');
     if (saved) setRecentScans(JSON.parse(saved));
@@ -96,6 +105,20 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
     });
   };
 
+  const handleClear = useCallback(() => {
+    setInput('');
+    setResult(null);
+    setError(null);
+    setIsSearching(false);
+    setIsDeepScanning(false);
+    setLogIndex(-1);
+  }, []);
+
+  const getAmazonLink = (part: string) => {
+    const query = encodeURIComponent(`${part} car part`);
+    return `https://www.amazon.com/s?k=${query}&tag=repairwizard-20`;
+  };
+
   const handleSearch = useCallback(async (deep = false) => {
     if (!input.trim()) return;
     
@@ -110,7 +133,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
       const ai = new GoogleGenAI({ apiKey });
 
       let languagePrompt = "";
-      const clarityInstruction = "All user-facing descriptions (especially the 'translation' and 'threatDescription' fields) must be clear, non-technical, and easy for a regular car owner to understand. Avoid complex engineering jargon in these fields.";
+      const clarityInstruction = "CRITICAL: All user-facing descriptions (especially the 'translation' and 'threatDescription' fields) MUST be written for a regular person who knows nothing about cars. Use simple, everyday language. Instead of 'catalytic converter efficiency', say 'the part that cleans exhaust is not working well'. Instead of 'misfire', say 'the engine is stumbling'. ABSOLUTELY NO technical jargon in these two fields.";
       
       if (mode === RegionMode.BADINAN) {
         languagePrompt = `Response must be in Badini Kurdish (Duhok/Zakho). ${clarityInstruction}`;
@@ -119,7 +142,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
       } else if (mode === RegionMode.ARABIC) {
         languagePrompt = `Response must be in Modern Standard Arabic. ${clarityInstruction}`;
       } else {
-        languagePrompt = `Response must be in clear, non-technical English. ${clarityInstruction}`;
+        languagePrompt = `Response must be in clear, simple, non-technical English. ${clarityInstruction}`;
       }
 
       const prompt = deep 
@@ -130,14 +153,15 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
+          systemInstruction: "You are a friendly, expert car mechanic who explains complex car problems to people who know nothing about cars. Your goal is to be helpful and clear, using simple analogies and everyday language for the 'translation' and 'threatDescription' fields.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
             properties: {
               code: { type: Type.STRING, description: "The detected or provided OBD-II fault code (e.g., P0300)." },
-              translation: { type: Type.STRING, description: "A non-technical, easy to understand explanation of the problem for a regular car owner." },
+              translation: { type: Type.STRING, description: "A non-technical, easy to understand explanation of the problem for a regular car owner. NO JARGON." },
               threatLevel: { type: Type.STRING, enum: ["STABLE", "WARNING", "CRITICAL"] },
-              threatDescription: { type: Type.STRING, description: "A clear explanation of the danger level in simple terms." },
+              threatDescription: { type: Type.STRING, description: "A clear explanation of the danger level in simple terms. NO JARGON." },
               partName: { type: Type.STRING },
               symptoms: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of symptoms in plain language." },
               commonCauses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of common causes in plain language." },
@@ -243,6 +267,50 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
             </div>
           </div>
 
+          {/* Scan Status Indicator */}
+          <div className="flex items-center justify-between bg-[#0d1117] border border-white/5 rounded-2xl p-4 relative overflow-hidden">
+            <div className="flex items-center gap-4">
+              <div className={`p-2 rounded-lg ${
+                status === 'SCANNING' ? 'bg-cyan-500/20 text-cyan-400 animate-pulse' :
+                status === 'COMPLETE' ? 'bg-emerald-500/20 text-emerald-400' :
+                status === 'ERROR' ? 'bg-red-500/20 text-red-400' :
+                'bg-slate-500/10 text-slate-500'
+              }`}>
+                {status === 'SCANNING' ? <Activity size={20} /> :
+                 status === 'COMPLETE' ? <CheckCircle2 size={20} /> :
+                 status === 'ERROR' ? <ShieldAlert size={20} /> :
+                 <Terminal size={20} />}
+              </div>
+              <div>
+                <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
+                  {t('common.scan_status', 'Scan Status')}
+                </div>
+                <div className={`text-sm font-black uppercase tracking-tighter ${
+                  status === 'SCANNING' ? 'text-cyan-400' :
+                  status === 'COMPLETE' ? 'text-emerald-400' :
+                  status === 'ERROR' ? 'text-red-400' :
+                  'text-slate-400'
+                }`}>
+                  {status === 'SCANNING' ? t('common.status_scanning', 'SCANNING') :
+                   status === 'COMPLETE' ? t('common.status_complete', 'COMPLETE') :
+                   status === 'ERROR' ? t('common.status_error', 'ERROR') :
+                   t('common.status_idle', 'IDLE')}
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar for Scanning */}
+            {status === 'SCANNING' && (
+              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-cyan-500/10">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${((logIndex + 1) / localizedLogs.length) * 100}%` }}
+                  className="h-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                />
+              </div>
+            )}
+          </div>
+
           {/* Search Input */}
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
@@ -256,13 +324,21 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
-              <button 
-                onClick={() => handleSearch()}
-                disabled={isSearching || isDeepScanning}
-                className="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-8 py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
-              >
-                {isSearching ? <Activity className="animate-spin" size={18} /> : t('common.decode', 'DECODE')}
-              </button>
+              <div className="flex items-center gap-2 pr-2">
+                <button 
+                  onClick={handleClear}
+                  className="px-4 py-4 text-[10px] font-black text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors border border-white/5 rounded-xl bg-white/5 whitespace-nowrap"
+                >
+                  {t('common.clear_all', 'Clear All')}
+                </button>
+                <button 
+                  onClick={() => handleSearch()}
+                  disabled={isSearching || isDeepScanning}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-8 py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                >
+                  {isSearching ? <Activity className="animate-spin" size={18} /> : t('common.decode', 'DECODE')}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -346,6 +422,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                     y: 0,
                     boxShadow: result.threatLevel === 'CRITICAL' 
                       ? ["0 0 20px rgba(239,68,68,0.1)", "0 0 40px rgba(239,68,68,0.3)", "0 0 20px rgba(239,68,68,0.1)"]
+                      : result.threatLevel === 'WARNING'
+                      ? ["0 0 15px rgba(234,179,8,0.05)", "0 0 30px rgba(234,179,8,0.15)", "0 0 15px rgba(234,179,8,0.05)"]
                       : "0 0 50px rgba(0,0,0,0.5)"
                   }}
                   transition={{ 
@@ -355,53 +433,111 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                       ease: "easeInOut"
                     }
                   }}
-                  className={`bg-[#0d1117] border rounded-3xl p-8 relative overflow-hidden group transition-colors duration-500 ${
+                  className={`bg-[#0d1117] border rounded-3xl p-8 relative overflow-hidden group transition-all duration-500 ${
                     result.threatLevel === 'CRITICAL' 
-                      ? 'border-red-500/30' 
+                      ? 'border-red-500/40 bg-red-500/[0.02]' 
                       : result.threatLevel === 'WARNING' 
-                      ? 'border-yellow-500/20' 
-                      : 'border-cyan-500/10'
+                      ? 'border-yellow-500/30 bg-yellow-500/[0.01]' 
+                      : 'border-cyan-500/20 bg-cyan-500/[0.01]'
                   }`}
                 >
-                  {result.threatLevel === 'WARNING' && (
-                    <motion.div 
-                      className="absolute inset-0 bg-yellow-500/5 pointer-events-none"
-                      animate={{ opacity: [0, 1, 0] }}
-                      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                    />
-                  )}
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent"></div>
+                  {/* Background Icon Watermark */}
+                  <div className="absolute -right-4 -bottom-4 opacity-[0.03] pointer-events-none group-hover:opacity-[0.06] transition-opacity duration-700">
+                    {result.threatLevel === 'CRITICAL' ? (
+                      <ShieldAlert size={200} className="text-red-500" />
+                    ) : result.threatLevel === 'WARNING' ? (
+                      <AlertTriangle size={200} className="text-yellow-500" />
+                    ) : (
+                      <CheckCircle2 size={200} className="text-cyan-500" />
+                    )}
+                  </div>
+
+                  <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20 ${
+                    result.threatLevel === 'CRITICAL' ? 'text-red-500' : result.threatLevel === 'WARNING' ? 'text-yellow-500' : 'text-cyan-500'
+                  }`}></div>
                   
-                  <div className="flex justify-between items-end mb-6">
-                    <div className="space-y-2">
+                  <div className="flex justify-between items-start mb-8">
+                    <div className="space-y-3">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full animate-pulse ${result.threatLevel === 'CRITICAL' ? 'bg-red-500' : result.threatLevel === 'WARNING' ? 'bg-yellow-400' : 'bg-cyan-400'}`}></div>
-                        <span className="text-[10px] font-black text-cyan-400/40 uppercase tracking-[0.3em]">{t('common.threat_assessment', 'Neural Threat Assessment')}</span>
+                        <motion.div 
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className={`w-2.5 h-2.5 rounded-full ${result.threatLevel === 'CRITICAL' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : result.threatLevel === 'WARNING' ? 'bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]' : 'bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.8)]'}`}
+                        ></motion.div>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">{t('common.threat_assessment', 'Neural Threat Assessment')}</span>
                       </div>
-                      <h2 className={`text-xl font-black uppercase tracking-wider drop-shadow-sm ${result.threatLevel === 'CRITICAL' ? 'text-red-500' : result.threatLevel === 'WARNING' ? 'text-yellow-400' : 'text-cyan-400'}`}>
-                        {result.threatLevel === 'CRITICAL' ? t('common.critical', 'Critical') : result.threatLevel === 'WARNING' ? t('common.warning', 'Warning') : t('common.stable', 'Stable')}
-                      </h2>
+                      
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-2xl border ${
+                          result.threatLevel === 'CRITICAL' ? 'bg-red-500/10 border-red-500/20 text-red-500' : 
+                          result.threatLevel === 'WARNING' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' : 
+                          'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+                        }`}>
+                          {result.threatLevel === 'CRITICAL' ? <ShieldAlert size={24} /> : result.threatLevel === 'WARNING' ? <AlertTriangle size={24} /> : <CheckCircle2 size={24} />}
+                        </div>
+                        <div>
+                          <h2 className={`text-2xl font-black uppercase tracking-tighter drop-shadow-sm ${result.threatLevel === 'CRITICAL' ? 'text-red-500' : result.threatLevel === 'WARNING' ? 'text-yellow-400' : 'text-cyan-400'}`}>
+                            {result.threatLevel === 'CRITICAL' ? t('common.critical', 'Critical') : result.threatLevel === 'WARNING' ? t('common.warning', 'Warning') : t('common.stable', 'Stable')}
+                          </h2>
+                          <motion.p 
+                            animate={{ opacity: [0.4, 0.8, 0.4] }}
+                            transition={{ duration: 3, repeat: Infinity }}
+                            className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5"
+                          >
+                            {result.threatDescription}
+                          </motion.p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5">
+                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{t('common.identified_part', 'Identified Part')}:</span>
+                        <a 
+                          href={getAmazonLink(result.partName)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-black text-cyan-400 hover:text-white transition-all flex items-center gap-1.5 group/link bg-cyan-500/5 px-3 py-1 rounded-full border border-cyan-500/10 hover:border-cyan-500/30"
+                        >
+                          {result.partName}
+                          <ShoppingCart size={10} className="group-hover/link:scale-110 transition-transform" />
+                        </a>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-4xl font-black italic text-cyan-500/10 tracking-tighter">{result.code}</span>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <span className="text-5xl font-black italic text-white/5 tracking-tighter select-none">{result.code}</span>
+                      <div className="px-2 py-0.5 bg-white/5 rounded text-[8px] font-mono text-slate-500 uppercase tracking-widest border border-white/5">
+                        {t('common.fault_signature', 'Fault Signature')}
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="relative h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 p-1">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: result.threatLevel === 'CRITICAL' ? '100%' : result.threatLevel === 'WARNING' ? '66%' : '33%' }}
-                      transition={{ duration: 1.5, ease: "circOut" }}
-                      className={`h-full rounded-full relative ${
-                        result.threatLevel === 'CRITICAL' 
-                          ? 'bg-gradient-to-r from-red-600 to-red-400 shadow-[0_0_20px_rgba(239,68,68,0.6)]' 
-                          : result.threatLevel === 'WARNING' 
-                          ? 'bg-gradient-to-r from-yellow-600 to-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.6)]' 
-                          : 'bg-gradient-to-r from-cyan-600 to-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.6)]'
-                      }`}
-                    >
-                      <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.3)_50%,transparent_100%)] animate-shimmer"></div>
-                    </motion.div>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-slate-500">
+                      <span>{t('common.risk_index', 'Risk Index')}</span>
+                      <span className={result.threatLevel === 'CRITICAL' ? 'text-red-500' : result.threatLevel === 'WARNING' ? 'text-yellow-400' : 'text-cyan-400'}>
+                        {result.threatLevel === 'CRITICAL' ? '90-100%' : result.threatLevel === 'WARNING' ? '40-70%' : '0-20%'}
+                      </span>
+                    </div>
+                    <div className="relative h-3 w-full bg-black/40 rounded-full overflow-hidden border border-white/5 p-0.5">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: result.threatLevel === 'CRITICAL' ? '100%' : result.threatLevel === 'WARNING' ? '65%' : '20%' }}
+                        transition={{ duration: 2, ease: "circOut" }}
+                        className={`h-full rounded-full relative ${
+                          result.threatLevel === 'CRITICAL' 
+                            ? 'bg-gradient-to-r from-red-600 via-red-500 to-red-400 shadow-[0_0_15px_rgba(239,68,68,0.4)]' 
+                            : result.threatLevel === 'WARNING' 
+                            ? 'bg-gradient-to-r from-yellow-600 via-yellow-500 to-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.4)]' 
+                            : 'bg-gradient-to-r from-cyan-600 via-cyan-500 to-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+                        }`}
+                      >
+                        <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.2)_50%,transparent_100%)] animate-shimmer"></div>
+                        <motion.div 
+                          animate={{ x: ['-100%', '200%'] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                          className="absolute inset-0 w-20 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+                        />
+                      </motion.div>
+                    </div>
                   </div>
                 </motion.div>
 
@@ -525,10 +661,15 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                     <div className="text-4xl font-black text-white">{result.estimatedCost}</div>
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    <button className="group relative flex items-center justify-center gap-3 bg-white text-black font-black px-10 py-5 rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-95">
+                    <a 
+                      href={getAmazonLink(result.partName)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative flex items-center justify-center gap-3 bg-white text-black font-black px-10 py-5 rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-95"
+                    >
                       <ShoppingCart size={20} />
                       <span className="uppercase tracking-tighter text-sm">{t('common.buy_part', 'BUY {{part}}', { part: result.partName })}</span>
-                    </button>
+                    </a>
                     <button className="group relative flex items-center justify-center gap-3 bg-transparent border-2 border-cyan-500 text-cyan-400 font-black px-10 py-5 rounded-2xl overflow-hidden transition-all hover:bg-cyan-500 hover:text-black active:scale-95">
                       <Truck size={20} />
                       <span className="uppercase tracking-tighter text-sm">{t('common.dispatch_mechanic', 'DISPATCH MECHANIC')}</span>

@@ -86,7 +86,12 @@ const ResultView: React.FC<ResultViewProps> = ({
   };
 
   const vinReportWhatsapp = "https://wa.me/16153392046?text=" + encodeURIComponent(
-    `Hello Repair Wizard, I am viewing a partial VIN report for ${result.vinScanData?.year || ''} ${result.vinScanData?.make || ''} ${result.vinScanData?.model || ''} (VIN: ${result.vinScanData?.vin || 'N/A'}). I would like to request the FULL HISTORY REPORT.`
+    t('common.whatsapp_report_msg', {
+      year: result.vinScanData?.year || '',
+      make: result.vinScanData?.make || '',
+      model: result.vinScanData?.model || '',
+      vin: result.vinScanData?.vin || 'N/A'
+    })
   );
 
   return (
@@ -152,17 +157,6 @@ const ResultView: React.FC<ResultViewProps> = ({
                       <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">{t('common.status_clear', 'Clear')}</p>
                     </div>
                   </div>
-                  
-                  <a 
-                    href={`https://www.goodcar.com/vehicle-history-report/${result.vinScanData.vin}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 group"
-                  >
-                    <Globe size={14} className="text-cyan-400" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('common.deep_scan_goodcar', 'Deep Scan via GoodCar.com')}</span>
-                    <ExternalLink size={12} className="text-slate-500 group-hover:translate-x-0.5 transition-transform" />
-                  </a>
                 </div>
               </div>
             </div>

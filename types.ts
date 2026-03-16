@@ -81,6 +81,15 @@ export interface AnalysisResult {
   }[];
 }
 
+export interface MarketAnalysisResult {
+  estimatedMarketValue: string;
+  resalePotential: 'High' | 'Medium' | 'Low';
+  demandScore: number;
+  commonIssuesForModel: string[];
+  importAdvice: string;
+  localMarketPriceRange: string;
+}
+
 export interface AppState {
   userInput: string;
   mode: RegionMode;

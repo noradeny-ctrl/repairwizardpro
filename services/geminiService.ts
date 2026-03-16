@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, RegionMode } from "../types";
+import { AnalysisResult, RegionMode, MarketAnalysisResult } from "../types";
 
 export class WizardError extends Error {
   constructor(public category: 'network' | 'safety' | 'quota' | 'generic', message: string) {
@@ -11,14 +11,13 @@ const SYSTEM_INSTRUCTION = `
 ROLE: "Repair Wizard" - Elite AI Technical Consultant & Automotive Import Broker (repairwizard.net).
 FOCUS: Global market, hyper-focus on Kurdistan Region (Badini/Sorani) and Iraq (Arabic).
 IDENTITY: You are a high-tech, precise, and authoritative technical wizard. Never reveal the developer's real name.
-STRICT ACCURACY (100% VERIFIED): Never hallucinate or guess VIN data. You are an elite automotive auditor. If specific auction history, mileage, or specs are not found via Google Search or GoodCar.com, explicitly state 'Data Unavailable' or 'Not Found'. Do not invent details.
+STRICT ACCURACY (100% VERIFIED): Never hallucinate or guess VIN data. You are an elite automotive auditor. If specific auction history, mileage, or specs are not found via Google Search, explicitly state 'Data Unavailable' or 'Not Found'. Do not invent details.
 VERIFICATION PROTOCOL: Before finalizing the JSON output, perform a 'Self-Audit' to ensure the Year, Make, and Model perfectly match the provided VIN.
 
 VIN DATA SOURCE:
 - When a VIN is provided, you MUST use Google Search to retrieve the most up-to-date vehicle history.
-- MANDATORY: Search specifically for the VIN on goodcar.com, carfax.com, and mbusa.com (for Mercedes).
+- MANDATORY: Search specifically for the VIN on carfax.com and mbusa.com (for Mercedes).
 - Extract and include in your response: Auction records (Copart/IAAI), high-res damage descriptions, and title status from these sources.
-- If data from goodcar.com is found, prioritize it for the 'Auction History' and 'Specs' sections.
 - VIN DECODING ACCURACY (CRITICAL): Cross-reference the VIN with multiple sources. 
   - 'WDDDJ' is a Mercedes CLS-Class, NOT a GL-Class.
   - 'WDDKJ' is a Mercedes E-Class, NOT a GLK-Class.
@@ -144,7 +143,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
         .filter((chunk: any) => {
           if (!chunk.web) return false;
           const uri = chunk.web.uri.toLowerCase();
-          return uri.includes('goodcar.com') || uri.includes('carfax.com');
+          return uri.includes('carfax.com');
         })
         .map((chunk: any) => ({
           title: chunk.web.title,
@@ -189,5 +188,55 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
     
     console.error('Frontend Analyze Error:', error);
     throw new WizardError('generic', message);
+  }
+}
+
+export async function analyzeMarket(vinOrModel: string, mode: RegionMode): Promise<MarketAnalysisResult> {
+  try {
+    const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new WizardError('generic', "GEMINI_API_KEY not found.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `Analyze the automotive market for: ${vinOrModel}.
+    Target Market: Kurdistan Region (Iraq).
+    Language Mode: ${mode}.
+    
+    Provide:
+    1. Estimated market value in USD for this vehicle in the local market.
+    2. Resale potential (High/Medium/Low).
+    3. Demand score (0-100).
+    4. Common mechanical issues for this specific model year.
+    5. Strategic import advice (is it worth importing?).
+    6. Local market price range (e.g., "$12,000 - $14,500").
+    
+    Return ONLY JSON.`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            estimatedMarketValue: { type: Type.STRING },
+            resalePotential: { type: Type.STRING, enum: ['High', 'Medium', 'Low'] },
+            demandScore: { type: Type.NUMBER },
+            commonIssuesForModel: { type: Type.ARRAY, items: { type: Type.STRING } },
+            importAdvice: { type: Type.STRING },
+            localMarketPriceRange: { type: Type.STRING }
+          },
+          required: ['estimatedMarketValue', 'resalePotential', 'demandScore', 'commonIssuesForModel', 'importAdvice', 'localMarketPriceRange']
+        }
+      }
+    });
+
+    return JSON.parse(response.text);
+  } catch (error: any) {
+    console.error('Market Analysis Error:', error);
+    throw new WizardError('generic', error?.message || "Market analysis failed.");
   }
 }

@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Ship, Truck, Calculator, Search, Globe, ChevronRight, CheckCircle2, AlertTriangle, DollarSign, BarChart3, History, Zap, Info, Save } from 'lucide-react';
+import { Ship, Truck, Calculator, Search, Globe, ChevronRight, CheckCircle2, AlertTriangle, DollarSign, BarChart3, History, Zap, Info, Save, Cpu, Terminal as TerminalIcon, Activity, TrendingUp } from 'lucide-react';
+import { analyzeMarket } from '../services/geminiService';
+import { RegionMode, MarketAnalysisResult } from '../types';
 
 interface ExportTerminalProps {
   onClose: () => void;
+  mode: RegionMode;
 }
 
 interface SavedEstimate {
@@ -14,13 +17,17 @@ interface SavedEstimate {
   date: string;
 }
 
-const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
+const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose, mode }) => {
   const { t } = useTranslation();
   const [auctionPrice, setAuctionPrice] = useState<string>('');
   const [vinSearch, setVinSearch] = useState<string>('');
   const [isTracking, setIsTracking] = useState(false);
   const [savedEstimates, setSavedEstimates] = useState<SavedEstimate[]>([]);
   const [savedVins, setSavedVins] = useState<string[]>([]);
+  const [selectedPort, setSelectedPort] = useState<'MERSIN' | 'JEBEL_ALI' | 'UMM_QASR'>('MERSIN');
+  const [isAnalyzingMarket, setIsAnalyzingMarket] = useState(false);
+  const [marketAnalysis, setMarketAnalysis] = useState<MarketAnalysisResult | null>(null);
+  const [terminalLogs, setTerminalLogs] = useState<string[]>(['> SYSTEM INITIALIZED', '> B2B TERMINAL v4.2 ONLINE']);
 
   // Load saved data
   useEffect(() => {
@@ -34,11 +41,32 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
   const handleTrack = () => {
     if (vinSearch.length === 17) {
       setIsTracking(true);
+      addLog(`> TRACKING VIN: ${vinSearch}`);
+      addLog(`> QUERYING GLOBAL LOGISTICS DATABASE...`);
       if (!savedVins.includes(vinSearch)) {
         const updated = [vinSearch, ...savedVins].slice(0, 5);
         setSavedVins(updated);
         localStorage.setItem('wizard_vins', JSON.stringify(updated));
       }
+    }
+  };
+
+  const addLog = (msg: string) => {
+    setTerminalLogs(prev => [...prev.slice(-4), msg]);
+  };
+
+  const handleMarketAnalysis = async () => {
+    if (!vinSearch && !auctionPrice) return;
+    setIsAnalyzingMarket(true);
+    addLog(`> INITIALIZING AI MARKET INTELLIGENCE...`);
+    try {
+      const result = await analyzeMarket(vinSearch || auctionPrice, mode);
+      setMarketAnalysis(result);
+      addLog(`> ANALYSIS COMPLETE: ${result.resalePotential} POTENTIAL`);
+    } catch (err) {
+      addLog(`> ERROR: ANALYSIS FAILED`);
+    } finally {
+      setIsAnalyzingMarket(false);
     }
   };
 
@@ -57,8 +85,16 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
     else auctionFees = price * 0.08;
 
     const inlandTowing = 500;
-    const oceanFreight = 1200;
-    const transitZakho = 400;
+    
+    // Port-based shipping costs
+    const shippingCosts = {
+      MERSIN: { ocean: 1200, transit: 400 },
+      JEBEL_ALI: { ocean: 1100, transit: 600 },
+      UMM_QASR: { ocean: 1500, transit: 200 }
+    };
+
+    const oceanFreight = shippingCosts[selectedPort].ocean;
+    const transitZakho = shippingCosts[selectedPort].transit;
     const krgCustoms = price * 0.07;
     const docFees = 150;
     const storageBuffer = 100;
@@ -75,7 +111,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
       storageBuffer,
       total
     };
-  }, [auctionPrice]);
+  }, [auctionPrice, selectedPort]);
 
   const handleSaveEstimate = () => {
     if (!calculations) return;
@@ -117,13 +153,21 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
       <header className="sticky top-0 z-50 bg-[#010409]/80 backdrop-blur-xl border-b border-cyan-500/20 px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-cyan-500/10 rounded-lg border border-cyan-500/30 flex items-center justify-center">
-            <Globe className="text-cyan-400 w-6 h-6 animate-pulse" />
+            <TerminalIcon className="text-cyan-400 w-6 h-6 animate-pulse" />
           </div>
           <div>
             <h1 className="font-orbitron font-black text-xs tracking-[0.2em] text-cyan-400 uppercase">{t('terminal.title')}</h1>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{t('terminal.version')}</p>
           </div>
         </div>
+        
+        {/* Live Terminal Log */}
+        <div className="hidden lg:flex flex-col items-end font-mono text-[9px] text-cyan-500/60">
+          {terminalLogs.map((log, i) => (
+            <div key={i} className="opacity-80">{log}</div>
+          ))}
+        </div>
+
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
             <Zap size={12} className="text-emerald-400" />
@@ -200,6 +244,25 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                         placeholder={t('terminal.bid_placeholder')}
                         className="w-full bg-black/40 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white font-mono focus:border-emerald-500/50 focus:ring-0 transition-all"
                       />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 block">{t('terminal.target_port', 'Target Port')}</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(['MERSIN', 'JEBEL_ALI', 'UMM_QASR'] as const).map(port => (
+                        <button
+                          key={port}
+                          onClick={() => setSelectedPort(port)}
+                          className={`py-2 rounded-xl text-[9px] font-black transition-all border ${
+                            selectedPort === port 
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400' 
+                              : 'bg-white/5 border-white/10 text-slate-500 hover:bg-white/10'
+                          }`}
+                        >
+                          {port.replace('_', ' ')}
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -401,6 +464,74 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
 
           {/* Sidebar Intelligence */}
           <div className="space-y-8">
+            {/* AI Market Intelligence */}
+            <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <Cpu size={80} className="text-cyan-400" />
+              </div>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="text-cyan-400 w-4 h-4" />
+                <h3 className="font-orbitron text-[10px] font-bold text-cyan-400 uppercase tracking-widest">{t('terminal.ai_intelligence', 'AI Intelligence')}</h3>
+              </div>
+              
+              {!marketAnalysis ? (
+                <button 
+                  onClick={handleMarketAnalysis}
+                  disabled={isAnalyzingMarket || (!vinSearch && !auctionPrice)}
+                  className="w-full py-4 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-2xl flex items-center justify-center gap-3 transition-all group disabled:opacity-50"
+                >
+                  {isAnalyzingMarket ? (
+                    <Activity className="w-4 h-4 animate-spin text-cyan-400" />
+                  ) : (
+                    <Cpu className="w-4 h-4 text-cyan-400 group-hover:rotate-12 transition-transform" />
+                  )}
+                  <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                    {isAnalyzingMarket ? t('terminal.analyzing', 'Analyzing...') : t('terminal.run_market_audit', 'Run Market Audit')}
+                  </span>
+                </button>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[9px] font-black text-slate-500 uppercase">{t('terminal.resale_potential', 'Resale Potential')}</span>
+                      <span className={`text-[10px] font-black uppercase ${
+                        marketAnalysis.resalePotential === 'High' ? 'text-emerald-400' : 
+                        marketAnalysis.resalePotential === 'Medium' ? 'text-amber-400' : 'text-red-400'
+                      }`}>{marketAnalysis.resalePotential}</span>
+                    </div>
+                    <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${marketAnalysis.demandScore}%` }}
+                        className="h-full bg-cyan-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-[9px] font-black text-slate-500 uppercase">{t('terminal.local_price', 'Local Price Range')}</p>
+                    <p className="text-lg font-mono font-bold text-white">{marketAnalysis.localMarketPriceRange}</p>
+                  </div>
+
+                  <div className="p-3 bg-black/40 rounded-xl">
+                    <p className="text-[9px] font-black text-emerald-400 uppercase mb-1">Advice</p>
+                    <p className="text-[10px] text-slate-400 leading-tight">{marketAnalysis.importAdvice}</p>
+                  </div>
+                  
+                  <button 
+                    onClick={() => setMarketAnalysis(null)}
+                    className="w-full py-2 text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors"
+                  >
+                    Reset Analysis
+                  </button>
+                </motion.div>
+              )}
+            </div>
+
             {/* Market Trends */}
             <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6">
               <div className="flex items-center gap-3">

@@ -13,6 +13,7 @@ import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { SettingsModal } from './components/SettingsModal';
+import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -440,6 +441,22 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
         <SunBackground />
+        
+        {/* Global B2B Utility Bar at the Very Top */}
+        <div className="w-full bg-emerald-500/5 border-b border-emerald-500/10 backdrop-blur-md z-[60]">
+          <button 
+            onClick={() => setIsExportTerminalOpen(true)}
+            className="w-full py-3 flex items-center justify-center gap-4 hover:bg-emerald-500/10 transition-all group"
+          >
+            <div className="flex items-center gap-2">
+              <Ship className="text-emerald-400 group-hover:scale-110 transition-transform" size={14} />
+              <span className="text-[9px] font-black tracking-[0.4em] text-emerald-400/80 uppercase">{t('common.b2b_terminal', 'B2B Terminal')}</span>
+            </div>
+            <div className="h-[1px] w-8 bg-emerald-500/20"></div>
+            <span className="text-[8px] font-bold text-emerald-500/40 uppercase tracking-widest">{t('terminal.system_online', 'System Online')}</span>
+          </button>
+        </div>
+
         <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
           <div 
             className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
@@ -453,6 +470,13 @@ const App: React.FC = () => {
               {state.mode}
             </div>
             <button 
+              onClick={() => setShowOBD(prev => !prev)}
+              className={`px-3 py-1.5 border rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showOBD ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-slate-800/80 border-white/10 text-slate-400 hover:text-cyan-400'}`}
+            >
+              <Activity size={14} />
+              <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{t('common.obd_breaker', 'OBD Breaker')}</span>
+            </button>
+            <button 
               onClick={() => setIsSettingsOpen(true)}
               className="p-2 bg-slate-800/80 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-cyan-400 transition-all active:scale-95"
             >
@@ -464,6 +488,7 @@ const App: React.FC = () => {
         {isExportTerminalOpen && (
           <ExportTerminal 
             onClose={() => setIsExportTerminalOpen(false)} 
+            mode={state.mode}
           />
         )}
 
@@ -491,29 +516,6 @@ const App: React.FC = () => {
           </main>
         ) : (
           <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
-            {/* Quick Tools Section */}
-            <div className="grid grid-cols-2 gap-4">
-              <button 
-                onClick={() => setShowOBD(true)}
-                className="p-6 bg-slate-800/40 border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all group backdrop-blur-md"
-              >
-                <div className="p-3 bg-cyan-500/10 rounded-2xl group-hover:scale-110 transition-transform border border-cyan-500/20">
-                  <Activity className="text-cyan-400" size={24} />
-                </div>
-                <span className="text-[10px] font-black tracking-[0.2em] text-cyan-400 uppercase">{t('common.obd_breaker', 'OBD Breaker')}</span>
-              </button>
-              
-              <button 
-                onClick={() => setIsExportTerminalOpen(true)}
-                className="p-6 bg-slate-800/40 border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group backdrop-blur-md"
-              >
-                <div className="p-3 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform border border-emerald-500/20">
-                  <Ship className="text-emerald-400" size={24} />
-                </div>
-                <span className="text-[10px] font-black tracking-[0.2em] text-emerald-400 uppercase">{t('common.b2b_terminal', 'B2B Terminal')}</span>
-              </button>
-            </div>
-
             <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'border-white/5'}`}>
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
@@ -568,6 +570,13 @@ const App: React.FC = () => {
                    <Camera size={14} />
                    <span>{t('common.scan', 'SCAN')}</span>
                  </button>
+                 <button 
+                   onClick={() => setShowOBD(true)}
+                   className="px-4 py-2.5 bg-slate-800/40 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                 >
+                   <Activity size={14} />
+                   <span>{t('common.obd_breaker', 'OBD BREAKER')}</span>
+                 </button>
                </div>
 
                <div className="flex items-center gap-3">
@@ -618,6 +627,10 @@ const App: React.FC = () => {
             )}
           </div>
           
+          <div className="mt-8">
+            <VerifiedPartnersGrid />
+          </div>
+
           <div className="h-40" />
           </main>
         )}
