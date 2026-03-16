@@ -56,6 +56,9 @@ export interface AnalysisResult {
       label: string;
       value: string;
     }[];
+    mileageStatus?: string;
+    titleStatus?: string;
+    safetyRating?: string;
     recalls?: {
       id: string;
       title: string;

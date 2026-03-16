@@ -7,7 +7,8 @@ import PartnerCard from './PartnerCard';
 import StepByStepGuide from './StepByStepGuide';
 import ImportEstimateTable from './ImportEstimateTable';
 import { PartnerCardSkeleton } from './Skeleton';
-import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle, Globe, ChevronDown, ChevronUp, History, Settings, ShieldAlert } from 'lucide-react';
+import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle, Globe, ChevronDown, ChevronUp, History, Settings, ShieldAlert, Activity, Gauge, FileText } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -123,7 +124,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                     <p className="text-cyan-400 font-orbitron font-bold tracking-widest text-xs">{result.vinScanData.model}</p>
                   </div>
                   <div className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-lg">
-                    <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Verified VIN</span>
+                    <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">VIN Scan</span>
                   </div>
                 </div>
                 
@@ -274,17 +275,86 @@ const ResultView: React.FC<ResultViewProps> = ({
                <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 border-b border-l border-cyan-500/30 rounded-bl-2xl">
                  <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Partial View</span>
                </div>
-               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                 <div className="w-1 h-1 rounded-full bg-cyan-500" />
-                 Report Summary
-               </h4>
-               <div className="space-y-4 text-sm text-slate-300 leading-relaxed">
-                 <p>
+               
+               <div className="mb-8">
+                 <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                   <div className="w-1 h-1 rounded-full bg-cyan-500" />
+                   Report Summary
+                 </h4>
+                 <div className="flex flex-col gap-1">
+                   <h2 className="text-3xl font-orbitron font-black text-white tracking-tighter uppercase">
+                     {result.vinScanData?.year} {result.vinScanData?.make}
+                   </h2>
+                   <p className="text-cyan-400 font-orbitron font-bold tracking-[0.2em] text-sm uppercase">
+                     {result.vinScanData?.model}
+                   </p>
+                 </div>
+               </div>
+
+               <div className="space-y-6">
+                 <p className="text-sm text-slate-300 leading-relaxed max-w-md">
                    Vehicle successfully identified in our global database. Basic specifications and preliminary status checks are available below.
                  </p>
-                 <p className="text-slate-400 italic">
-                   "Detailed auction records, high-resolution damage photos, and complete ownership history are currently locked for this VIN."
-                 </p>
+                 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="p-5 bg-black/40 rounded-3xl border border-white/5 flex items-start gap-4 transition-colors hover:bg-white/5"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                        <Activity size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Engine Type</p>
+                        <p className="text-sm font-bold text-white">{result.vinScanData?.engine || '---'}</p>
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="p-5 bg-black/40 rounded-3xl border border-white/5 flex items-start gap-4 transition-colors hover:bg-white/5"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Gauge size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Mileage Status</p>
+                        <p className="text-sm font-bold text-white">{result.vinScanData?.mileageStatus || '---'}</p>
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="p-5 bg-black/40 rounded-3xl border border-white/5 flex items-start gap-4 transition-colors hover:bg-white/5"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
+                        <ShieldAlert size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Safety Rating</p>
+                        <p className="text-sm font-bold text-white">{result.vinScanData?.safetyRating || '---'}</p>
+                      </div>
+                    </motion.div>
+
+                    <motion.div 
+                      whileHover={{ scale: 1.02 }}
+                      className="p-5 bg-black/40 rounded-3xl border border-white/5 flex items-start gap-4 transition-colors hover:bg-white/5"
+                    >
+                      <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0">
+                        <FileText size={20} />
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Title Status</p>
+                        <p className="text-sm font-bold text-white">{result.vinScanData?.titleStatus || '---'}</p>
+                      </div>
+                    </motion.div>
+                  </div>
+
+                 <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl">
+                   <p className="text-[10px] text-red-400/80 italic leading-relaxed">
+                     "Detailed auction records, high-resolution damage photos, and complete ownership history are currently locked for this VIN."
+                   </p>
+                 </div>
                </div>
 
                <div className="mt-8 pt-6 border-t border-white/5">

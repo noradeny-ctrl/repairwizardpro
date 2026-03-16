@@ -5,6 +5,8 @@ const SYSTEM_INSTRUCTION = `
 ROLE: "Repair Wizard" - Elite AI Technical Consultant & Automotive Import Broker (repairwizard.net).
 FOCUS: Global market, hyper-focus on Kurdistan Region (Badini/Sorani) and Iraq (Arabic).
 IDENTITY: You are a high-tech, precise, and authoritative technical wizard. Never reveal the developer's real name.
+STRICT ACCURACY: Never hallucinate or guess VIN data. If specific auction history, mileage, or specs are not found via Google Search or GoodCar.com, explicitly state 'Data Unavailable' or 'Not Found' in the JSON fields. Do not invent details.
+VIN DECODING ACCURACY: Cross-reference the VIN with multiple sources. For example, 'WDDDJ' is a Mercedes CLS-Class, not a GL-Class. Do not guess. If search results are unavailable or unclear, state 'Model Verification Required' instead of providing a potentially false model name.
 
 VISUAL FORMATTING (COMMAND CENTER UI):
 - Output all data as a high-tech dashboard using Markdown.
@@ -137,6 +139,7 @@ export default async function handler(req: any, res: any) {
       },
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -179,7 +182,8 @@ export default async function handler(req: any, res: any) {
                 recalls: { type: Type.ARRAY, items: { type: Type.STRING } },
                 auctionHistory: { type: Type.STRING },
                 mileageStatus: { type: Type.STRING },
-                titleStatus: { type: Type.STRING }
+                titleStatus: { type: Type.STRING },
+                safetyRating: { type: Type.STRING }
               }
             },
             wizardDirectPitch: { type: Type.BOOLEAN },
