@@ -124,32 +124,32 @@ const ResultView: React.FC<ResultViewProps> = ({
                     <p className="text-cyan-400 font-orbitron font-bold tracking-widest text-xs">{result.vinScanData.model}</p>
                   </div>
                   <div className="px-3 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-lg">
-                    <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">VIN Scan</span>
+                    <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">{t('common.vin_scan', 'VIN Scan')}</span>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-1">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Serial Number</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.serial_number', 'Serial Number')}</p>
                     <p className="text-sm font-mono text-white tracking-widest">{result.vinScanData.vin}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Region of Origin</p>
-                    <p className="text-sm font-bold text-white">North America (USA/CAN)</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.region_origin', 'Region of Origin')}</p>
+                    <p className="text-sm font-bold text-white">{t('common.origin_north_america', 'North America (USA/CAN)')}</p>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-white/5 flex flex-col gap-4">
                   <div className="flex gap-4">
                     <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
-                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Market Value</p>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.market_value', 'Market Value')}</p>
                       <p className="text-lg font-orbitron font-black text-emerald-400">
                         ${result.marketValue?.toLocaleString() || '---'}
                       </p>
                     </div>
                     <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
-                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                      <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">Clear</p>
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.status', 'Status')}</p>
+                      <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">{t('common.status_clear', 'Clear')}</p>
                     </div>
                   </div>
                   
@@ -160,7 +160,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                     className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 group"
                   >
                     <Globe size={14} className="text-cyan-400" />
-                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Deep Scan via GoodCar.com</span>
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{t('common.deep_scan_goodcar', 'Deep Scan via GoodCar.com')}</span>
                     <ExternalLink size={12} className="text-slate-500 group-hover:translate-x-0.5 transition-transform" />
                   </a>
                 </div>
@@ -170,18 +170,18 @@ const ResultView: React.FC<ResultViewProps> = ({
             {/* Collapsible Details */}
             <div className="mt-6 space-y-4">
               <CollapsibleSection 
-                title="Vehicle Specifications" 
+                title={t('common.vehicle_specs', 'Vehicle Specifications')} 
                 icon={<Settings size={18} />}
                 isOpen={openSections.specs}
                 onToggle={() => toggleSection('specs')}
-                badge={`${result.vinScanData.technicalSpecs?.length || 4} Specs Available`}
+                badge={t('common.specs_available', { count: result.vinScanData.technicalSpecs?.length || 4 })}
               >
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   {(result.vinScanData.technicalSpecs || [
-                    { label: 'Engine', value: result.vinScanData.engine || 'V6 3.5L' },
-                    { label: 'Trim', value: result.vinScanData.trim || 'Limited' },
-                    { label: 'Drive Type', value: 'AWD' },
-                    { label: 'Fuel Type', value: 'Gasoline' }
+                    { label: t('common.engine_type', 'Engine Type'), value: result.vinScanData.engine || 'V6 3.5L' },
+                    { label: t('common.trim', 'Trim'), value: result.vinScanData.trim || 'Limited' },
+                    { label: t('common.drive_type', 'Drive Type'), value: 'AWD' },
+                    { label: t('common.fuel_type', 'Fuel Type'), value: 'Gasoline' }
                   ]).map((spec, i) => (
                     <div key={i} className="p-3 bg-black/20 rounded-xl border border-white/5">
                       <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{spec.label}</p>
@@ -192,11 +192,11 @@ const ResultView: React.FC<ResultViewProps> = ({
               </CollapsibleSection>
 
               <CollapsibleSection 
-                title="Safety Recalls" 
+                title={t('common.safety_recalls', 'Safety Recalls')} 
                 icon={<ShieldAlert size={18} />}
                 isOpen={openSections.recalls}
                 onToggle={() => toggleSection('recalls')}
-                badge={`${result.vinScanData.recalls?.length || 1} Recalls Found`}
+                badge={t('common.recalls_found', { count: result.vinScanData.recalls?.length || 1 })}
               >
                 <div className="space-y-3 pt-2">
                   {(result.vinScanData.recalls || [
@@ -218,11 +218,11 @@ const ResultView: React.FC<ResultViewProps> = ({
               </CollapsibleSection>
 
               <CollapsibleSection 
-                title="Auction History" 
+                title={t('common.auction_history', 'Auction History')} 
                 icon={<History size={18} />}
                 isOpen={openSections.auction}
                 onToggle={() => toggleSection('auction')}
-                badge={`${result.vinScanData.auctionHistory?.length || 1} Records Found`}
+                badge={t('common.records_found', { count: result.vinScanData.auctionHistory?.length || 1 })}
               >
                 <div className="space-y-4 pt-2">
                   {(result.vinScanData.auctionHistory || [
@@ -235,15 +235,15 @@ const ResultView: React.FC<ResultViewProps> = ({
                       </div>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Odometer</p>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.odometer', 'Odometer')}</p>
                           <p className="text-[10px] font-bold text-white">{record.odometer}</p>
                         </div>
                         <div>
-                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Damage</p>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.damage', 'Damage')}</p>
                           <p className="text-[10px] font-bold text-red-400">{record.damage}</p>
                         </div>
                         <div>
-                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Final Bid</p>
+                          <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.final_bid', 'Final Bid')}</p>
                           <p className="text-[10px] font-bold text-emerald-400">{record.finalBid}</p>
                         </div>
                       </div>
@@ -274,13 +274,13 @@ const ResultView: React.FC<ResultViewProps> = ({
             <div className="p-8 bg-slate-900/40 border border-white/5 rounded-[2.5rem] relative overflow-hidden backdrop-blur-md">
                <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 border-b border-l border-cyan-500/30 rounded-bl-2xl flex items-center gap-2">
                  <ShieldCheck size={10} className="text-cyan-400" />
-                 <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Verified Data</span>
+                 <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">{t('common.verified_data', 'Verified Data')}</span>
                </div>
                
                <div className="mb-8">
                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
                    <div className="w-1 h-1 rounded-full bg-cyan-500" />
-                   Report Summary
+                   {t('common.report_summary', 'Report Summary')}
                  </h4>
                  <div className="flex flex-col gap-1">
                    <h2 className="text-3xl font-orbitron font-black text-white tracking-tighter uppercase">
@@ -294,7 +294,7 @@ const ResultView: React.FC<ResultViewProps> = ({
 
                <div className="space-y-6">
                  <p className="text-sm text-slate-300 leading-relaxed max-w-md">
-                   Vehicle successfully identified in our global database. Basic specifications and preliminary status checks are available below.
+                   {t('common.vehicle_identified', 'Vehicle successfully identified in our global database. Basic specifications and preliminary status checks are available below.')}
                  </p>
                  
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -306,7 +306,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                         <Activity size={20} />
                       </div>
                       <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Engine Type</p>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.engine_type', 'Engine Type')}</p>
                         <p className="text-sm font-bold text-white">{result.vinScanData?.engine || '---'}</p>
                       </div>
                     </motion.div>
@@ -319,7 +319,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                         <Gauge size={20} />
                       </div>
                       <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Mileage Status</p>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.mileage_status', 'Mileage Status')}</p>
                         <p className="text-sm font-bold text-white">{result.vinScanData?.mileageStatus || '---'}</p>
                       </div>
                     </motion.div>
@@ -332,7 +332,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                         <ShieldAlert size={20} />
                       </div>
                       <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Safety Rating</p>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.safety_rating', 'Safety Rating')}</p>
                         <p className="text-sm font-bold text-white">{result.vinScanData?.safetyRating || '---'}</p>
                       </div>
                     </motion.div>
@@ -345,7 +345,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                         <FileText size={20} />
                       </div>
                       <div>
-                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Title Status</p>
+                        <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.title_status', 'Title Status')}</p>
                         <p className="text-sm font-bold text-white">{result.vinScanData?.titleStatus || '---'}</p>
                       </div>
                     </motion.div>
@@ -353,7 +353,7 @@ const ResultView: React.FC<ResultViewProps> = ({
 
                  <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-2xl">
                    <p className="text-[10px] text-red-400/80 italic leading-relaxed">
-                     "Detailed auction records, high-resolution damage photos, and complete ownership history are currently locked for this VIN."
+                     "{t('common.locked_records', 'Detailed auction records, high-resolution damage photos, and complete ownership history are currently locked for this VIN.')}"
                    </p>
                  </div>
                </div>
@@ -365,7 +365,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                    rel="noopener noreferrer"
                    className="w-full py-5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 group"
                  >
-                   <span className="font-black text-xs uppercase tracking-widest">Get Full History Report</span>
+                   <span className="font-black text-xs uppercase tracking-widest">{t('common.get_full_report', 'Get Full History Report')}</span>
                    <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
                  </a>
                </div>
@@ -383,7 +383,7 @@ const ResultView: React.FC<ResultViewProps> = ({
               <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
                 <AlertTriangle className="text-red-500" size={20} />
                 <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">
-                  Repair cost exceeds 50% of market value. Import recommended.
+                  {t('common.import_recommended', 'Repair cost exceeds 50% of market value. Import recommended.')}
                 </p>
               </div>
             )}
@@ -396,7 +396,7 @@ const ResultView: React.FC<ResultViewProps> = ({
           <section className="animate-slide-up space-y-4">
             <div className="flex items-center gap-3">
               <Globe className="text-cyan-400 w-4 h-4" />
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Verified Web Sources</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('common.verified_sources', 'Verified Web Sources')}</p>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {result.groundingSources.map((source, i) => (
@@ -430,7 +430,7 @@ const ResultView: React.FC<ResultViewProps> = ({
                 </div>
                 <div className="text-left">
                   <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">
-                    {mode === RegionMode.BADINAN ? 'کۆگەها جیهانی یا ئەمەزۆن' : 'Amazon Global Store'}
+                    {t('common.amazon_store', 'Amazon Global Store')}
                   </p>
                   <p className="text-sm font-bold text-white">{getAmazonLabel()}</p>
                 </div>

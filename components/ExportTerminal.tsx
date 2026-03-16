@@ -127,7 +127,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
             <Zap size={12} className="text-emerald-400" />
-            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">System Online</span>
+            <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{t('terminal.system_online')}</span>
           </div>
           <button 
             onClick={onClose}
@@ -147,7 +147,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
             <div className="max-w-xl">
               <h2 className="font-orbitron text-4xl font-black text-white mb-4 tracking-tighter leading-none">
-                GLOBAL <span className="text-cyan-400">LOGISTICS</span> HUB
+                {t('terminal.hero_title_main')} <span className="text-cyan-400">{t('terminal.hero_title_accent')}</span> {t('terminal.hero_title_sub')}
               </h2>
               <p className="text-slate-400 text-sm leading-relaxed">
                 {t('terminal.hero_desc')}
@@ -155,11 +155,11 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
             </div>
             <div className="flex gap-4">
               <div className="px-6 py-4 bg-black/40 border border-white/5 rounded-2xl text-center">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Active Containers</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('terminal.active_containers')}</p>
                 <p className="text-2xl font-orbitron font-black text-white">142</p>
               </div>
               <div className="px-6 py-4 bg-black/40 border border-white/5 rounded-2xl text-center">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Avg. Transit</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('terminal.avg_transit')}</p>
                 <p className="text-2xl font-orbitron font-black text-white">28d</p>
               </div>
             </div>
@@ -182,7 +182,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                     className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-bold text-slate-300 transition-all"
                   >
                     <Save size={12} />
-                    SAVE
+                    {t('terminal.save')}
                   </button>
                 )}
               </div>
@@ -206,33 +206,33 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                   <div className="p-4 bg-white/5 border border-white/5 rounded-2xl space-y-3">
                     <div className="flex items-center gap-2 mb-2">
                       <Info size={12} className="text-slate-500" />
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Fee Breakdown</span>
+                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{t('terminal.fee_breakdown')}</span>
                     </div>
                     {calculations ? (
                       <div className="space-y-2">
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-500">Auction Fees</span>
+                          <span className="text-slate-500">{t('terminal.auction_fees')}</span>
                           <span className="font-mono text-white">${calculations.auctionFees.toFixed(0)}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-500">Inland Towing</span>
+                          <span className="text-slate-500">{t('terminal.inland_towing')}</span>
                           <span className="font-mono text-white">${calculations.inlandTowing}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-500">Ocean Freight</span>
+                          <span className="text-slate-500">{t('terminal.ocean_freight')}</span>
                           <span className="font-mono text-white">${calculations.oceanFreight}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-500">KRG Customs</span>
+                          <span className="text-slate-500">{t('terminal.krg_customs')}</span>
                           <span className="font-mono text-white">${calculations.krgCustoms.toFixed(0)}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
-                          <span className="text-slate-500">Documentation</span>
+                          <span className="text-slate-500">{t('terminal.documentation')}</span>
                           <span className="font-mono text-white">${calculations.docFees}</span>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-slate-600 italic">Enter price to see breakdown...</p>
+                      <p className="text-[10px] text-slate-600 italic">{t('terminal.enter_price_hint')}</p>
                     )}
                   </div>
                 </div>
@@ -250,13 +250,13 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                       </p>
                       <div className="flex items-center justify-center gap-2 text-[10px] text-emerald-500/60 font-bold uppercase tracking-widest">
                         <Zap size={10} />
-                        Landed in Zakho
+                        {t('terminal.landed_in_zakho')}
                       </div>
                     </motion.div>
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center opacity-20">
                       <Calculator size={64} className="mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest">Awaiting Input</p>
+                      <p className="text-xs font-bold uppercase tracking-widest">{t('terminal.awaiting_input')}</p>
                     </div>
                   )}
                 </div>
@@ -275,7 +275,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                 <div className="md:col-span-1 space-y-4">
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vehicle ID (VIN)</label>
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('terminal.vehicle_id')}</label>
                       <span className={`text-[10px] font-mono ${vinSearch.length === 17 ? 'text-cyan-400' : 'text-slate-600'}`}>
                         {vinSearch.length}/17
                       </span>
@@ -290,7 +290,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                             const val = e.target.value.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, '');
                             setVinSearch(val);
                           }}
-                          placeholder="ENTER 17-DIGIT VIN"
+                          placeholder={t('terminal.vin_input_placeholder')}
                           className={`w-full bg-black/40 border ${vinSearch.length === 17 ? 'border-cyan-500/50' : 'border-white/10'} rounded-2xl py-4 px-6 text-white font-mono text-xs focus:border-cyan-500/50 focus:ring-0 transition-all tracking-widest pr-12`}
                         />
                         {vinSearch.length > 0 && (
@@ -326,7 +326,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                   
                   {savedVins.length > 0 && !isTracking && (
                     <div className="space-y-2">
-                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Recent VINs</p>
+                      <p className="text-[8px] font-black text-slate-600 uppercase tracking-widest">{t('terminal.recent_vins')}</p>
                       <div className="flex flex-wrap gap-2">
                         {savedVins.map(v => (
                           <button 
@@ -349,7 +349,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                         exit={{ opacity: 0, y: -10 }}
                         className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider"
                       >
-                        * VIN must be exactly 17 characters (No I, O, Q)
+                        {t('terminal.vin_requirement_hint')}
                       </motion.p>
                     )}
                   </AnimatePresence>
@@ -357,10 +357,10 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                   <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl">
                     <div className="flex items-center gap-2 mb-2">
                       <Info size={10} className="text-cyan-500" />
-                      <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">Tracking Intelligence</p>
+                      <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest">{t('terminal.tracking_intelligence')}</p>
                     </div>
                     <p className="text-[10px] text-slate-400 leading-relaxed">
-                      Real-time telemetry from US ports to Ibrahim Khalil. Enter your 17-digit VIN to begin.
+                      {t('terminal.tracking_desc')}
                     </p>
                   </div>
                 </div>
@@ -391,7 +391,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                   ) : (
                     <div className="h-full flex flex-col items-center justify-center text-center opacity-10">
                       <Globe size={48} className="mb-4" />
-                      <p className="text-[10px] font-black uppercase tracking-widest">Global Tracking Inactive</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest">{t('terminal.tracking_inactive')}</p>
                     </div>
                   )}
                 </div>
@@ -405,7 +405,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
             <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6">
               <div className="flex items-center gap-3">
                 <BarChart3 className="text-cyan-400 w-4 h-4" />
-                <h3 className="font-orbitron text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Market Intelligence</h3>
+                <h3 className="font-orbitron text-[10px] font-bold text-cyan-400 uppercase tracking-widest">{t('terminal.market_intelligence')}</h3>
               </div>
               <div className="space-y-4">
                 {marketTrends.map((trend, i) => (
@@ -423,7 +423,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
             <div className="bg-slate-900/60 border border-white/5 rounded-[2rem] p-6 space-y-6">
               <div className="flex items-center gap-3">
                 <History className="text-slate-400 w-4 h-4" />
-                <h3 className="font-orbitron text-[10px] font-bold text-slate-400 uppercase tracking-widest">Recent Estimates</h3>
+                <h3 className="font-orbitron text-[10px] font-bold text-slate-400 uppercase tracking-widest">{t('terminal.recent_estimates')}</h3>
               </div>
               <div className="space-y-3">
                 {savedEstimates.length > 0 ? (
@@ -443,7 +443,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose }) => {
                     </button>
                   ))
                 ) : (
-                  <p className="text-[10px] text-slate-600 text-center py-4 italic">No saved estimates yet.</p>
+                  <p className="text-[10px] text-slate-600 text-center py-4 italic">{t('terminal.no_estimates')}</p>
                 )}
               </div>
             </div>

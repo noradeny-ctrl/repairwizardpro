@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Partner, RegionMode } from '../types';
 
 interface PartnerCardProps {
@@ -8,6 +9,7 @@ interface PartnerCardProps {
 }
 
 const PartnerCard: React.FC<PartnerCardProps> = ({ partner, mode, hideImage }) => {
+  const { t } = useTranslation();
   const isRTL = mode !== RegionMode.WESTERN;
 
   return (
@@ -42,7 +44,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, mode, hideImage }) =
         className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 transition-all rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95"
       >
         <span className="text-sm">💬</span>
-        <span className="font-black tracking-widest uppercase text-[9px] text-white">Contact Usta</span>
+        <span className="font-black tracking-widest uppercase text-[9px] text-white">{t('common.contact_usta', 'Contact Usta')}</span>
       </a>
     </div>
   );

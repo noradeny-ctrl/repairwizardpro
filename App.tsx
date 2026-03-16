@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, Clipboard, Camera, AlertTriangle } from 'lucide-react';
+import { Globe, Loader2, Ship, Clipboard, Camera, AlertTriangle, Activity, Settings, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -11,6 +11,8 @@ import ResultView from './components/ResultView';
 import WizardIcon from './components/WizardIcon';
 import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
+import OBDAnalyzer from './components/OBDAnalyzer';
+import { SettingsModal } from './components/SettingsModal';
 import partnersData, { fetchActivePartners } from './partners';
 import { db } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -172,7 +174,16 @@ const App: React.FC = () => {
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
   const [isPartnersLoading, setIsPartnersLoading] = useState(false);
   const [isExportTerminalOpen, setIsExportTerminalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+  const [showOBD, setShowOBD] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (geminiKey) {
+      localStorage.setItem('gemini_api_key', geminiKey);
+    }
+  }, [geminiKey]);
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -193,7 +204,7 @@ const App: React.FC = () => {
         if (errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')) {
           setState(prev => ({ 
             ...prev, 
-            error: "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."
+            error: t('common.connection_throttled', "The Wizard's connection is currently throttled. Please wait a few seconds and refresh.")
           }));
         }
       }
@@ -241,7 +252,7 @@ const App: React.FC = () => {
 
   const startAnalysis = useCallback(async () => {
     if (!state.userInput.trim() && !state.image) {
-      setState(prev => ({ ...prev, error: "Please provide a description or an image." }));
+      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image.") }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
@@ -251,7 +262,7 @@ const App: React.FC = () => {
       const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
       
       if (!analysis || typeof analysis !== 'object') {
-        throw new Error("Invalid analysis payload received.");
+        throw new Error(t('common.invalid_analysis_payload', "Invalid analysis payload received."));
       }
 
       await saveRepairToFirestore(state.userInput, analysis);
@@ -300,9 +311,9 @@ const App: React.FC = () => {
     // Real-time VIN validation feedback - ONLY if it looks like a VIN (no spaces, mostly alphanumeric, length 17)
     if (trimmed.length > 0 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed)) {
       if (/[IOQ]/i.test(trimmed)) {
-        error = "VINs never contain the letters I, O, or Q.";
+        error = t('common.vin_invalid_chars', "VINs never contain the letters I, O, or Q.");
       } else if (trimmed.length === 17 && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(trimmed)) {
-        error = "Invalid VIN format. Please check for special characters.";
+        error = t('common.vin_invalid_format', "Invalid VIN format. Please check for special characters.");
       }
     }
 
@@ -438,16 +449,15 @@ const App: React.FC = () => {
             <Globe className="w-5 h-5 text-cyan-400" />
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsExportTerminalOpen(true)}
-              className="px-4 py-2 bg-slate-800/80 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
-            >
-              <Ship size={14} />
-              {t('common.b2b_terminal')}
-            </button>
             <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-2 bg-slate-800/80 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-cyan-400 transition-all active:scale-95"
+            >
+              <Settings size={18} />
+            </button>
           </div>
         </header>
 
@@ -456,8 +466,55 @@ const App: React.FC = () => {
             onClose={() => setIsExportTerminalOpen(false)} 
           />
         )}
-        <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
-          <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'border-white/5'}`}>
+
+        {isSettingsOpen && (
+          <SettingsModal 
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            currentKey={geminiKey}
+            onSave={setGeminiKey}
+          />
+        )}
+
+        {showOBD ? (
+          <main className="flex-1 overflow-y-auto hide-scrollbar relative z-10 p-6">
+            <div className="max-w-4xl mx-auto">
+              <button 
+                onClick={() => setShowOBD(false)}
+                className="mb-6 flex items-center gap-2 text-[10px] font-black text-cyan-500/60 hover:text-cyan-400 uppercase tracking-[0.3em] transition-colors group"
+              >
+                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+                {t('common.back_to_dashboard', 'Back to Dashboard')}
+              </button>
+              <OBDAnalyzer mode={state.mode} />
+            </div>
+          </main>
+        ) : (
+          <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
+            {/* Quick Tools Section */}
+            <div className="grid grid-cols-2 gap-4">
+              <button 
+                onClick={() => setShowOBD(true)}
+                className="p-6 bg-slate-800/40 border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all group backdrop-blur-md"
+              >
+                <div className="p-3 bg-cyan-500/10 rounded-2xl group-hover:scale-110 transition-transform border border-cyan-500/20">
+                  <Activity className="text-cyan-400" size={24} />
+                </div>
+                <span className="text-[10px] font-black tracking-[0.2em] text-cyan-400 uppercase">{t('common.obd_breaker', 'OBD Breaker')}</span>
+              </button>
+              
+              <button 
+                onClick={() => setIsExportTerminalOpen(true)}
+                className="p-6 bg-slate-800/40 border border-white/5 rounded-[2.5rem] flex flex-col items-center gap-3 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group backdrop-blur-md"
+              >
+                <div className="p-3 bg-emerald-500/10 rounded-2xl group-hover:scale-110 transition-transform border border-emerald-500/20">
+                  <Ship className="text-emerald-400" size={24} />
+                </div>
+                <span className="text-[10px] font-black tracking-[0.2em] text-emerald-400 uppercase">{t('common.b2b_terminal', 'B2B Terminal')}</span>
+              </button>
+            </div>
+
+            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'border-white/5'}`}>
             <textarea 
               className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
               placeholder={t('common.describe_problem')} 
@@ -496,20 +553,20 @@ const App: React.FC = () => {
                          setState(prev => ({ ...prev, userInput: cleaned, error: undefined }));
                        }
                      } catch (err) {
-                       setState(prev => ({ ...prev, error: "Clipboard access denied. Please paste manually." }));
+                       setState(prev => ({ ...prev, error: t('common.clipboard_denied', "Clipboard access denied. Please paste manually.") }));
                      }
                    }}
                    className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
                  >
                    <Clipboard size={14} className="text-cyan-400" />
-                   <span>PASTE</span>
+                   <span>{t('common.paste', 'PASTE')}</span>
                  </button>
                  <button 
                    onClick={() => fileInputRef.current?.click()}
                    className="px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
                  >
                    <Camera size={14} />
-                   <span>SCAN</span>
+                   <span>{t('common.scan', 'SCAN')}</span>
                  </button>
                </div>
 
@@ -527,7 +584,7 @@ const App: React.FC = () => {
                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                          </svg>
                        </div>
-                       <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">VERIFIED</span>
+                       <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">{t('common.verified', 'VERIFIED')}</span>
                      </motion.div>
                    )}
                  </AnimatePresence>
@@ -541,7 +598,7 @@ const App: React.FC = () => {
                        onClick={() => setState(prev => ({ ...prev, userInput: '', error: undefined }))}
                        className="text-[10px] font-black text-red-400/60 hover:text-red-400 uppercase tracking-widest transition-colors"
                      >
-                       CLEAR
+                       {t('common.clear', 'CLEAR')}
                      </button>
                    </div>
                  )}
@@ -562,7 +619,8 @@ const App: React.FC = () => {
           </div>
           
           <div className="h-40" />
-        </main>
+          </main>
+        )}
         <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
           <button 
             onClick={startAnalysis} 

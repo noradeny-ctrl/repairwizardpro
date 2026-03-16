@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Shield, Key, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave, currentKey }) => {
+  const { t } = useTranslation();
   const [key, setKey] = useState(currentKey);
   const [showKey, setShowKey] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -58,8 +60,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                     <Shield className="w-5 h-5 text-cyan-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-white">System Calibration</h2>
-                    <p className="text-[10px] font-black tracking-widest text-cyan-500/60 uppercase">Security Protocol v4.2</p>
+                    <h2 className="text-lg font-bold text-white">{t('settings.title')}</h2>
+                    <p className="text-[10px] font-black tracking-widest text-cyan-500/60 uppercase">{t('settings.protocol')}</p>
                   </div>
                 </div>
                 <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
@@ -71,13 +73,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                 <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex gap-3">
                   <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                   <p className="text-xs text-amber-200/70 leading-relaxed">
-                    API keys are stored locally in your browser. They are never transmitted to our servers, only used for direct communication with the Gemini Engine.
+                    {t('settings.disclaimer')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-black tracking-widest text-slate-500 uppercase ml-1">
-                    Gemini API Key
+                    {t('settings.api_key_label')}
                   </label>
                   <div className="relative group">
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors">
@@ -87,18 +89,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                       type={showKey ? "text" : "password"}
                       value={key}
                       onChange={(e) => setKey(e.target.value)}
-                      placeholder="Enter your API key..."
+                      placeholder={t('settings.api_key_placeholder')}
                       className="w-full bg-slate-900/50 border border-white/5 rounded-2xl py-4 pl-12 pr-12 text-sm text-white placeholder-slate-700 focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                     />
                     <button 
                       onClick={() => setShowKey(!showKey)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-500 hover:text-white transition-colors uppercase"
                     >
-                      {showKey ? "Hide" : "Show"}
+                      {showKey ? t('settings.hide') : t('settings.show')}
                     </button>
                   </div>
                   {currentKey && !key && (
-                    <p className="text-[9px] text-red-400/60 mt-1 ml-1 italic">Warning: Clearing this will disable the Wizard Engine.</p>
+                    <p className="text-[9px] text-red-400/60 mt-1 ml-1 italic">{t('settings.warning_clear')}</p>
                   )}
                 </div>
 
@@ -114,24 +116,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, o
                   {isSaved ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span className="text-xs font-black uppercase tracking-widest">Calibrated</span>
+                      <span className="text-xs font-black uppercase tracking-widest">{t('settings.calibrated')}</span>
                     </>
                   ) : (
-                    <span className="text-xs font-black uppercase tracking-widest">Save Configuration</span>
+                    <span className="text-xs font-black uppercase tracking-widest">{t('settings.save_config')}</span>
                   )}
                 </button>
               </div>
             </div>
             
             <div className="px-8 py-4 bg-white/5 border-t border-white/5 flex justify-between items-center">
-              <span className="text-[9px] text-slate-500 font-medium">Status: {currentKey ? 'Engine Ready' : 'Awaiting Input'}</span>
+              <span className="text-[9px] text-slate-500 font-medium">{currentKey ? t('settings.status_ready') : t('settings.status_awaiting')}</span>
               <a 
                 href="https://ai.google.dev/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-[9px] text-cyan-400 hover:underline"
               >
-                Get API Key
+                {t('settings.get_key')}
               </a>
             </div>
           </motion.div>

@@ -83,12 +83,12 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
           <div className="flex items-center gap-4">
             <div className="flex flex-col">
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.complexity')}</span>
-              <span className="text-[10px] font-bold text-cyan-400">{complexity}</span>
+              <span className="text-[10px] font-bold text-cyan-400">{t(`common.complexity_${complexity.toLowerCase()}`)}</span>
             </div>
             <div className="w-px h-6 bg-white/5" />
             <div className="flex flex-col">
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.est_time')}</span>
-              <span className="text-[10px] font-bold text-cyan-400">{totalEstTime} MIN</span>
+              <span className="text-[10px] font-bold text-cyan-400">{totalEstTime} {t('common.min')}</span>
             </div>
           </div>
         </div>

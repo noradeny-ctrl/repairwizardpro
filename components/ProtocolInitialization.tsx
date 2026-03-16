@@ -9,12 +9,12 @@ const ProtocolInitialization: React.FC = () => {
   const [step, setStep] = useState(0);
 
   const steps = [
-    { icon: <Cpu size={20} />, label: 'CORE_SYSTEM_BOOT', color: 'text-cyan-400' },
-    { icon: <Database size={20} />, label: 'DATABASE_SYNC_INIT', color: 'text-emerald-400' },
-    { icon: <Search size={20} />, label: 'NEURAL_PATTERN_SCAN', color: 'text-amber-400' },
-    { icon: <Shield size={20} />, label: 'SAFETY_PROTOCOL_VERIFY', color: 'text-red-400' },
-    { icon: <Zap size={20} />, label: 'WIZARD_LOGIC_ENGAGED', color: 'text-purple-400' },
-    { icon: <Activity size={20} />, label: 'FINALIZING_PROTOCOL', color: 'text-cyan-400' },
+    { icon: <Cpu size={20} />, label: t('common.core_system_boot'), color: 'text-cyan-400' },
+    { icon: <Database size={20} />, label: t('common.database_sync_init'), color: 'text-emerald-400' },
+    { icon: <Search size={20} />, label: t('common.neural_pattern_scan'), color: 'text-amber-400' },
+    { icon: <Shield size={20} />, label: t('common.safety_protocol_verify'), color: 'text-red-400' },
+    { icon: <Zap size={20} />, label: t('common.wizard_logic_engaged'), color: 'text-purple-400' },
+    { icon: <Activity size={20} />, label: t('common.finalizing_protocol'), color: 'text-cyan-400' },
   ];
 
   useEffect(() => {
@@ -91,7 +91,7 @@ const ProtocolInitialization: React.FC = () => {
                   {steps[step].icon}
                 </div>
                 <div className="flex-1">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">SYSTEM_STATUS</p>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('common.system_status')}</p>
                   <p className={`text-sm font-mono font-bold ${steps[step].color}`}>
                     {steps[step].label}...
                   </p>
@@ -105,18 +105,18 @@ const ProtocolInitialization: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="p-4 bg-slate-900/40 border border-white/5 rounded-2xl">
-              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">LATENCY</p>
+              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">{t('common.latency')}</p>
               <p className="text-xs font-mono text-emerald-400">12ms</p>
             </div>
             <div className="p-4 bg-slate-900/40 border border-white/5 rounded-2xl">
-              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">WIZARD_LOAD</p>
+              <p className="text-[8px] font-black text-slate-500 uppercase mb-1">{t('common.wizard_load')}</p>
               <p className="text-xs font-mono text-cyan-400">0.82%</p>
             </div>
           </div>
         </div>
 
         <p className="mt-12 text-[9px] font-mono text-slate-600 uppercase tracking-widest animate-pulse">
-          DO NOT DISCONNECT_SESSION
+          {t('common.do_not_disconnect')}
         </p>
       </div>
     </div>
