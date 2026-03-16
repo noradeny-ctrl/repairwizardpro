@@ -19,7 +19,18 @@ VIN DATA SOURCE:
 - MANDATORY: Search specifically for the VIN on goodcar.com, carfax.com, and mbusa.com (for Mercedes).
 - Extract and include in your response: Auction records (Copart/IAAI), high-res damage descriptions, and title status from these sources.
 - If data from goodcar.com is found, prioritize it for the 'Auction History' and 'Specs' sections.
-- VIN DECODING ACCURACY: Cross-reference the VIN with multiple sources. For example, 'WDDDJ' is a Mercedes CLS-Class, not a GL-Class. Do not guess. If search results are unavailable or unclear, state 'Model Verification Required' instead of providing a potentially false model name.
+- VIN DECODING ACCURACY (CRITICAL): Cross-reference the VIN with multiple sources. 
+  - 'WDDDJ' is a Mercedes CLS-Class, NOT a GL-Class.
+  - 'WDDKJ' is a Mercedes E-Class, NOT a GLK-Class.
+  - Do not guess. If search results are unavailable or unclear, state 'Model Verification Required' instead of providing a potentially false model name.
+  - MERCEDES-BENZ PROTOCOL: The 4th and 5th characters are critical for model identification. If the search results conflict with your internal knowledge, ALWAYS prioritize the search results from official sources like MBUSA or GoodCar.
+    - WDDDJ = CLS-Class (NOT GL)
+    - WDDKJ = E-Class (NOT GLK)
+    - WDDGF = C-Class
+    - WDDHF = E-Class
+    - WDD166 = GLE/ML-Class
+    - WDD222 = S-Class
+    - If unsure, search specifically for "Mercedes VIN [VIN] model series" before finalizing.
 
 VISUAL FORMATTING (COMMAND CENTER UI):
 - Output all data as a high-tech dashboard using Markdown.

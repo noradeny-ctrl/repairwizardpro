@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, Clipboard, Camera } from 'lucide-react';
+import { Globe, Loader2, Ship, Clipboard, Camera, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -180,7 +180,6 @@ const App: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       try {
         const docRef = doc(db, 'test', 'connection');
-        // Use getDoc instead of getDocFromServer for a more resilient initial check
         await getDoc(docRef);
         console.log("✅ Firestore connection verified.");
       } catch (err: any) {
@@ -189,13 +188,14 @@ const App: React.FC = () => {
           return testConnection(retries - 1);
         }
         console.error("❌ Firestore connection failed after retries:", err);
+        // Don't set a blocking error for the user unless it's a quota issue
         const errorMsg = err.message || String(err);
-        setState(prev => ({ 
-          ...prev, 
-          error: errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')
-            ? "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."
-            : `Initialization Error: ${errorMsg}` 
-        }));
+        if (errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')) {
+          setState(prev => ({ 
+            ...prev, 
+            error: "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."
+          }));
+        }
       }
     };
     testConnection();
@@ -294,7 +294,19 @@ const App: React.FC = () => {
       val = val.toUpperCase();
     }
 
-    setState(prev => ({ ...prev, userInput: val, error: undefined }));
+    let error = undefined;
+    const trimmed = val.trim();
+    
+    // Real-time VIN validation feedback - ONLY if it looks like a VIN (no spaces, mostly alphanumeric, length 17)
+    if (trimmed.length > 0 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed)) {
+      if (/[IOQ]/i.test(trimmed)) {
+        error = "VINs never contain the letters I, O, or Q.";
+      } else if (trimmed.length === 17 && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(trimmed)) {
+        error = "Invalid VIN format. Please check for special characters.";
+      }
+    }
+
+    setState(prev => ({ ...prev, userInput: val, error }));
   }, []);
 
   const nearbyPartners = useMemo(() => {
@@ -317,64 +329,58 @@ const App: React.FC = () => {
   const recommendedPartners = useMemo(() => {
     if (!nearbyPartners.length || !state.result) return [];
     
-    const diagnosis = state.result.diagnosis.toLowerCase();
-    const partName = state.result.partName.toLowerCase();
-    const userInput = state.userInput.toLowerCase();
+    const diagnosis = state.result.diagnosis;
+    const partName = state.result.partName;
+    const userInput = state.userInput;
 
-    // Enhanced Scoring Logic with Fuzzy Matching
+    // 1. Initialize Fuse for the entire nearby partners collection
+    // This is much more efficient than per-partner initialization
+    const fuse = new Fuse(nearbyPartners, {
+      keys: [
+        { name: 'specialties', weight: 2 },
+        { name: 'services_offered', weight: 1 }
+      ],
+      includeScore: true,
+      threshold: 0.4,
+      ignoreLocation: true,
+      useExtendedSearch: true
+    });
+
+    // 2. Perform searches for different context levels
+    const partResults = fuse.search(partName);
+    const diagResults = fuse.search(diagnosis);
+    const inputResults = fuse.search(userInput);
+
+    // 3. Create a map for quick score lookup
+    const scoreMap = new Map<string, number>();
+
+    const applyResults = (results: any[], weight: number) => {
+      results.forEach(res => {
+        const current = scoreMap.get(res.item.id) || 0;
+        // Fuse score: 0 is perfect, 1 is no match. We invert it.
+        const matchQuality = 1 - (res.score || 0);
+        scoreMap.set(res.item.id, current + (matchQuality * weight));
+      });
+    };
+
+    applyResults(partResults, 20); // Part name is highest priority
+    applyResults(diagResults, 12); // Diagnosis is medium priority
+    applyResults(inputResults, 5); // User input is lowest priority
+
+    // 4. Final scoring and sorting
     return nearbyPartners
       .map(p => {
-        let score = 0;
+        let expertScore = scoreMap.get(p.id) || 0;
         
-        // Prepare Fuse instances for fuzzy matching on partner attributes
-        const specialtiesFuse = new Fuse(p.specialties, { 
-          includeScore: true,
-          threshold: 0.35, 
-          distance: 100 
-        });
-        const servicesFuse = new Fuse(p.services_offered, { 
-          includeScore: true,
-          threshold: 0.4, 
-          distance: 100 
-        });
+        // Proximity Bonus: Closer partners get a significant boost
+        // Max bonus of 10 points for being right next to the user
+        const proximityBonus = p.distance !== undefined ? Math.max(0, (1 - (p.distance / 50)) * 10) : 0;
+        
+        const totalScore = expertScore + proximityBonus;
 
-        const calculateContextScore = (query: string, weight: number) => {
-          if (!query) return 0;
-          let matchScore = 0;
-          
-          // Check specialties (weighted 1.5x for expertise)
-          const specResults = specialtiesFuse.search(query);
-          if (specResults.length > 0) {
-            // Fuse score 0 is perfect, 1 is no match
-            matchScore += (1 - (specResults[0].score || 0)) * weight * 1.5;
-          }
-
-          // Check services (standard weight)
-          const servResults = servicesFuse.search(query);
-          if (servResults.length > 0) {
-            matchScore += (1 - (servResults[0].score || 0)) * weight;
-          }
-
-          return matchScore;
-        };
-
-        // 1. Critical Match: Part Name (Highest Priority)
-        score += calculateContextScore(partName, 15);
-
-        // 2. Contextual Match: Diagnosis (Medium Priority)
-        score += calculateContextScore(diagnosis, 8);
-
-        // 3. User Intent Match: User Input (Low Priority)
-        score += calculateContextScore(userInput, 4);
-
-        // 4. Proximity Bonus (Boost for hyper-local experts)
-        if (p.distance && p.distance < 15) {
-          score += (1 - (p.distance / 15)) * 3;
-        }
-
-        return { ...p, matchScore: score };
+        return { ...p, matchScore: totalScore };
       })
-      .filter(p => p.matchScore > 2) // Filter out low-confidence matches
+      .filter(p => p.matchScore > 3) // Filter out irrelevant matches
       .sort((a, b) => b.matchScore - a.matchScore)
       .slice(0, 3);
   }, [nearbyPartners, state.userInput, state.result]);
@@ -458,6 +464,25 @@ const App: React.FC = () => {
               value={state.userInput} 
               onChange={handleInputChange} 
             />
+
+            {/* Inline Error Message */}
+            <AnimatePresence>
+              {state.error && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mb-4 overflow-hidden"
+                >
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
+                    <AlertTriangle size={14} className="text-red-400 shrink-0" />
+                    <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider leading-tight">
+                      {String(state.error)}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             
             {/* Input Actions Toolbar */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
@@ -535,13 +560,6 @@ const App: React.FC = () => {
               </div>
             )}
           </div>
-          {state.error && (
-            <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-[2rem] text-center animate-shake">
-              <p className="text-red-400 text-xs font-bold leading-relaxed">
-                {String(state.error)}
-              </p>
-            </div>
-          )}
           
           <div className="h-40" />
         </main>
