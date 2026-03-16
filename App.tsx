@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship } from 'lucide-react';
+import { Globe, Loader2, Ship, Clipboard, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -459,57 +459,68 @@ const App: React.FC = () => {
               onChange={handleInputChange} 
             />
             
-            {/* VIN Detection Badge */}
-            <AnimatePresence>
-              {isValidVin && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                  className="absolute bottom-6 right-6 flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-full shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-                >
-                  <div className="w-4 h-4 rounded-full bg-cyan-500 flex items-center justify-center">
-                    <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={4}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span className="text-[9px] font-black text-cyan-400 uppercase tracking-widest">VIN Verified</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Input Actions Toolbar */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
+               <div className="flex gap-2">
+                 <button 
+                   onClick={async () => {
+                     try {
+                       const text = await navigator.clipboard.readText();
+                       if (text) {
+                         const cleaned = text.trim().toUpperCase().substring(0, 17);
+                         setState(prev => ({ ...prev, userInput: cleaned, error: undefined }));
+                       }
+                     } catch (err) {
+                       setState(prev => ({ ...prev, error: "Clipboard access denied. Please paste manually." }));
+                     }
+                   }}
+                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                 >
+                   <Clipboard size={14} className="text-cyan-400" />
+                   <span>PASTE</span>
+                 </button>
+                 <button 
+                   onClick={() => fileInputRef.current?.click()}
+                   className="px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                 >
+                   <Camera size={14} />
+                   <span>SCAN</span>
+                 </button>
+               </div>
 
-            {/* VIN Length Helper */}
-            {state.userInput.trim().length > 0 && state.userInput.trim().length < 17 && /^[A-HJ-NPR-Z0-9]*$/i.test(state.userInput.trim()) && (
-              <div className="absolute top-6 right-6">
-                <span className="text-[10px] font-mono text-slate-600">
-                  {state.userInput.trim().length}/17
-                </span>
-              </div>
-            )}
+               <div className="flex items-center gap-3">
+                 <AnimatePresence>
+                   {isValidVin && (
+                     <motion.div 
+                       initial={{ opacity: 0, scale: 0.8 }}
+                       animate={{ opacity: 1, scale: 1 }}
+                       exit={{ opacity: 0, scale: 0.8 }}
+                       className="flex items-center gap-2 px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-lg"
+                     >
+                       <div className="w-3 h-3 rounded-full bg-cyan-500 flex items-center justify-center">
+                         <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={5}>
+                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                         </svg>
+                       </div>
+                       <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">VERIFIED</span>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
 
-            {/* Input Actions */}
-            <div className="absolute top-6 left-6 flex gap-2">
-               <button 
-                 onClick={async () => {
-                   try {
-                     const text = await navigator.clipboard.readText();
-                     if (text) setState(prev => ({ ...prev, userInput: text.trim().toUpperCase().substring(0, 17) }));
-                   } catch (err) {
-                     console.error("Clipboard access denied");
-                   }
-                 }}
-                 className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[9px] font-black text-slate-400 uppercase tracking-widest transition-all active:scale-90"
-                 title="Paste VIN"
-               >
-                 📋 PASTE
-               </button>
-               <button 
-                 onClick={() => fileInputRef.current?.click()}
-                 className="p-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-[9px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-90"
-                 title="Scan VIN Plate"
-               >
-                 📷 SCAN VIN
-               </button>
+                 {state.userInput.trim().length > 0 && (
+                   <div className="flex items-center gap-3">
+                     <span className="text-[10px] font-mono text-slate-500 bg-black/20 px-2 py-1 rounded-lg">
+                       {state.userInput.trim().length}/17
+                     </span>
+                     <button 
+                       onClick={() => setState(prev => ({ ...prev, userInput: '', error: undefined }))}
+                       className="text-[10px] font-black text-red-400/60 hover:text-red-400 uppercase tracking-widest transition-colors"
+                     >
+                       CLEAR
+                     </button>
+                   </div>
+                 )}
+               </div>
             </div>
           </div>
           <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
