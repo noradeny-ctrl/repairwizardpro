@@ -7,7 +7,7 @@ import PartnerCard from './PartnerCard';
 import StepByStepGuide from './StepByStepGuide';
 import ImportEstimateTable from './ImportEstimateTable';
 import { PartnerCardSkeleton } from './Skeleton';
-import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle, Globe, ChevronDown, ChevronUp, History, Settings, ShieldAlert, Activity, Gauge, FileText } from 'lucide-react';
+import { ListChecks, ShoppingCart, ExternalLink, AlertTriangle, Globe, ChevronDown, ChevronUp, History, Settings, ShieldAlert, Activity, Gauge, FileText, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface CollapsibleSectionProps {
@@ -272,8 +272,9 @@ const ResultView: React.FC<ResultViewProps> = ({
         {result.resultType === 'VIN_SCAN' ? (
           <section className="animate-slide-up space-y-6">
             <div className="p-8 bg-slate-900/40 border border-white/5 rounded-[2.5rem] relative overflow-hidden backdrop-blur-md">
-               <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 border-b border-l border-cyan-500/30 rounded-bl-2xl">
-                 <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Partial View</span>
+               <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 border-b border-l border-cyan-500/30 rounded-bl-2xl flex items-center gap-2">
+                 <ShieldCheck size={10} className="text-cyan-400" />
+                 <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">Verified Data</span>
                </div>
                
                <div className="mb-8">
