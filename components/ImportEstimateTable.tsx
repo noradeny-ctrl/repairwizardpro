@@ -22,7 +22,7 @@ const ImportEstimateTable: React.FC<ImportEstimateTableProps> = ({ vinData, mark
   const krgCustoms = marketValue * 0.07;
   const totalImportCost = inlandTowing + oceanFreight + transitZakho + krgCustoms;
 
-  const whatsappLink = "https://wa.me/9647501234567?text=" + encodeURIComponent(
+  const whatsappLink = "https://wa.me/16153392046?text=" + encodeURIComponent(
     `Hello Repair Wizard, I would like to get the FULL HISTORY REPORT for this vehicle.\nVIN: ${vinData?.vin || 'N/A'}\nVehicle: ${vinData?.year || ''} ${vinData?.make || ''} ${vinData?.model || ''}`
   );
 

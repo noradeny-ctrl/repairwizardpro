@@ -138,17 +138,30 @@ const ResultView: React.FC<ResultViewProps> = ({
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-white/5 flex gap-4">
-                  <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Market Value</p>
-                    <p className="text-lg font-orbitron font-black text-emerald-400">
-                      ${result.marketValue?.toLocaleString() || '---'}
-                    </p>
+                <div className="pt-4 border-t border-white/5 flex flex-col gap-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Market Value</p>
+                      <p className="text-lg font-orbitron font-black text-emerald-400">
+                        ${result.marketValue?.toLocaleString() || '---'}
+                      </p>
+                    </div>
+                    <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
+                      <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
+                      <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">Clear</p>
+                    </div>
                   </div>
-                  <div className="flex-1 p-3 bg-black/40 rounded-2xl border border-white/5">
-                    <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1">Status</p>
-                    <p className="text-lg font-orbitron font-black text-cyan-400 uppercase">Clear</p>
-                  </div>
+                  
+                  <a 
+                    href={`https://www.goodcar.com/vehicle-history-report/${result.vinScanData.vin}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 group"
+                  >
+                    <Globe size={14} className="text-cyan-400" />
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">Deep Scan via GoodCar.com</span>
+                    <ExternalLink size={12} className="text-slate-500 group-hover:translate-x-0.5 transition-transform" />
+                  </a>
                 </div>
               </div>
             </div>
