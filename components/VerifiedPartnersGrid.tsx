@@ -1,11 +1,13 @@
 
-import React from 'react';
-import { ShieldCheck, ExternalLink, Award, Globe, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, ExternalLink, Award, Globe, Zap, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { BecomePartnerModal } from './BecomePartnerModal';
 
 export const VerifiedPartnersGrid: React.FC = () => {
   const { t } = useTranslation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const PARTNERS = [
     {
@@ -100,18 +102,35 @@ export const VerifiedPartnersGrid: React.FC = () => {
         ))}
       </div>
 
-      <div className="p-4 bg-cyan-500/5 border border-cyan-500/10 rounded-2xl flex items-center justify-between group cursor-pointer hover:bg-cyan-500/10 transition-all">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-cyan-500/20 flex items-center justify-center">
-            <ShieldCheck size={16} className="text-cyan-400" />
+      <motion.div 
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        onClick={() => setIsModalOpen(true)}
+        className="relative p-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-[2rem] flex items-center justify-between group cursor-pointer hover:border-cyan-500/40 transition-all overflow-hidden"
+      >
+        {/* Animated Background Element */}
+        <div className="absolute -right-4 -bottom-4 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-500/20 transition-all" />
+        
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 group-hover:rotate-12 transition-transform">
+            <ShieldCheck size={24} className="text-cyan-400" />
           </div>
           <div>
-            <p className="text-[10px] font-black text-white uppercase tracking-widest">{t('common.become_partner')}</p>
-            <p className="text-[8px] text-slate-500 uppercase font-bold">{t('common.join_elite_network')}</p>
+            <p className="text-sm font-black text-white uppercase tracking-tight">{t('common.become_partner')}</p>
+            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">{t('common.join_elite_network')}</p>
           </div>
         </div>
-        <ExternalLink size={14} className="text-slate-600 group-hover:text-cyan-400 transition-colors" />
-      </div>
+        
+        <div className="relative z-10 flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10 group-hover:bg-cyan-500 group-hover:text-black transition-all">
+          <span className="text-[9px] font-black uppercase tracking-widest">{t('common.view_integration')}</span>
+          <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+        </div>
+      </motion.div>
+
+      <BecomePartnerModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
     </div>
   );
 };

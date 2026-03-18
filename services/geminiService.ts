@@ -56,7 +56,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
   try {
     const apiKey = localStorage.getItem('gemini_api_key') || import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new WizardError('generic', "GEMINI_API_KEY not found. Please set it in the Settings menu.");
+      throw new WizardError('generic', "GEMINI_API_KEY not found. Please ensure it is set in the environment.");
     }
 
     const ai = new GoogleGenAI({ apiKey });

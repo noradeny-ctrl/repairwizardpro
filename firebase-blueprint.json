@@ -1,32 +1,80 @@
 {
   "entities": {
-    "RepairRecord": {
-      "title": "Repair Record",
-      "description": "Stores details about a vehicle repair.",
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile information and roles.",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "The unique identifier for the repair record." },
-        "userId": { "type": "string", "description": "The ID of the user who owns this record (anonymous)." },
-        "vehicleInfo": {
-          "type": "object",
-          "properties": {
-            "make": { "type": "string" },
-            "model": { "type": "string" },
-            "year": { "type": "integer" }
-          }
-        },
-        "issueDescription": { "type": "string", "description": "Description of the vehicle's problem." },
-        "aiDiagnosis": { "type": "string", "description": "The AI-generated diagnosis." },
-        "status": { "type": "string", "enum": ["pending", "diagnosed", "repaired"], "description": "Current status of the repair." },
+        "uid": { "type": "string", "description": "The user's unique ID from Firebase Auth." },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "role": { "type": "string", "enum": ["user", "admin", "partner"], "description": "The user's role in the system." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "issueDescription"]
+      "required": ["uid", "email", "role"]
+    },
+    "OBDScan": {
+      "title": "OBD Scan Record",
+      "description": "Stores the results of an OBD-II scan.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The UID of the user who performed the scan." },
+        "code": { "type": "string" },
+        "translation": { "type": "string" },
+        "threatLevel": { "type": "string", "enum": ["STABLE", "WARNING", "CRITICAL"] },
+        "partName": { "type": "string" },
+        "estimatedCost": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "code", "translation", "threatLevel", "timestamp"]
+    },
+    "PartnerApplication": {
+      "title": "Partner Application",
+      "description": "Stores submissions from the 'Become a Partner' form.",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "businessType": { "type": "string" },
+        "fullName": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "approved", "rejected"] },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyName", "businessType", "fullName", "email", "phone", "status", "submittedAt"]
+    },
+    "Repair": {
+      "title": "Repair Log",
+      "description": "Stores general repair diagnoses and issue descriptions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "issueDescription": { "type": "string" },
+        "aiDiagnosis": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "issueDescription", "aiDiagnosis", "status", "createdAt"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents."
+    },
+    "/scans/{scanId}": {
+      "schema": "OBDScan",
+      "description": "Global scan history."
+    },
+    "/partnerApplications/{applicationId}": {
+      "schema": "PartnerApplication",
+      "description": "Applications to join the elite network."
+    },
     "/repairs/{repairId}": {
-      "schema": "RepairRecord",
-      "description": "Repair record document."
+      "schema": "Repair",
+      "description": "General repair diagnostic logs."
     }
   }
 }

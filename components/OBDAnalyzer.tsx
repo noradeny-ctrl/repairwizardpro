@@ -4,6 +4,8 @@ import { Search, AlertTriangle, ShoppingCart, Truck, Activity, Terminal, CheckCi
 import { GoogleGenAI, Type } from "@google/genai";
 import { RegionMode } from '../types';
 import { useTranslation } from 'react-i18next';
+import { useFirebase } from './FirebaseProvider';
+import { db, collection, setDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 
 type ThreatLevel = 'STABLE' | 'WARNING' | 'CRITICAL';
 
@@ -29,6 +31,7 @@ interface OBDAnalyzerProps {
 
 const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) => {
   const { t } = useTranslation();
+  const { user } = useFirebase();
 
   const localizedLogs = [
     t('common.initializing_neural_link', 'INITIALIZING NEURAL LINK...'),
@@ -183,6 +186,25 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
       const data = JSON.parse(response.text);
       setResult(data);
       saveToRecent(data);
+
+      // Save to Firestore if user is logged in
+      if (user) {
+        try {
+          const scanRef = doc(collection(db, 'scans'));
+          await setDoc(scanRef, {
+            uid: user.uid,
+            code: data.code,
+            translation: data.translation,
+            threatLevel: data.threatLevel,
+            partName: data.partName,
+            estimatedCost: data.estimatedCost,
+            timestamp: Timestamp.now()
+          });
+        } catch (fsErr) {
+          console.error("Failed to save scan to Firestore:", fsErr);
+          // We don't throw here to not interrupt the user experience
+        }
+      }
     } catch (err: any) {
       console.error("OBD Analysis failed:", err);
       

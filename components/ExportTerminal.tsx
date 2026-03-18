@@ -77,11 +77,12 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose, mode }) => {
 
     // Standard Tiered Auction Fees (Copart/IAAI Estimate)
     let auctionFees = 0;
-    if (price < 500) auctionFees = 150;
-    else if (price < 1000) auctionFees = 250;
-    else if (price < 2000) auctionFees = 400;
-    else if (price < 5000) auctionFees = 600;
-    else if (price < 10000) auctionFees = 800;
+    if (price < 500) auctionFees = 200;
+    else if (price < 1000) auctionFees = 350;
+    else if (price < 2000) auctionFees = 500;
+    else if (price < 5000) auctionFees = 750;
+    else if (price < 10000) auctionFees = 950;
+    else if (price < 15000) auctionFees = 1100;
     else auctionFees = price * 0.08;
 
     const inlandTowing = 500;
@@ -286,12 +287,20 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose, mode }) => {
                           <span className="font-mono text-white">${calculations.oceanFreight}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">{t('terminal.transit_zakho')}</span>
+                          <span className="font-mono text-white">${calculations.transitZakho}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
                           <span className="text-slate-500">{t('terminal.krg_customs')}</span>
                           <span className="font-mono text-white">${calculations.krgCustoms.toFixed(0)}</span>
                         </div>
                         <div className="flex justify-between text-[11px]">
                           <span className="text-slate-500">{t('terminal.documentation')}</span>
                           <span className="font-mono text-white">${calculations.docFees}</span>
+                        </div>
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">{t('terminal.storage_buffer')}</span>
+                          <span className="font-mono text-white">${calculations.storageBuffer}</span>
                         </div>
                       </div>
                     ) : (
@@ -518,7 +527,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose, mode }) => {
                   </div>
 
                   <div className="p-3 bg-black/40 rounded-xl">
-                    <p className="text-[9px] font-black text-emerald-400 uppercase mb-1">Advice</p>
+                    <p className="text-[9px] font-black text-emerald-400 uppercase mb-1">{t('terminal.advice', 'Advice')}</p>
                     <p className="text-[10px] text-slate-400 leading-tight">{marketAnalysis.importAdvice}</p>
                   </div>
                   
@@ -526,7 +535,7 @@ const ExportTerminal: React.FC<ExportTerminalProps> = ({ onClose, mode }) => {
                     onClick={() => setMarketAnalysis(null)}
                     className="w-full py-2 text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors"
                   >
-                    Reset Analysis
+                    {t('terminal.reset_analysis', 'Reset Analysis')}
                   </button>
                 </motion.div>
               )}

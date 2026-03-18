@@ -95,7 +95,6 @@ export interface AppState {
   mode: RegionMode;
   isAnalyzing: boolean;
   isStarted: boolean;
-  image?: string;
   result?: AnalysisResult;
   error?: string;
 }

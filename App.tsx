@@ -1,7 +1,8 @@
 
+// Main Application Component
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, Clipboard, Camera, AlertTriangle, Activity, Settings, ArrowLeft } from 'lucide-react';
+import { Globe, Loader2, Ship, Clipboard, AlertTriangle, Activity, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -12,36 +13,12 @@ import WizardIcon from './components/WizardIcon';
 import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
-import { SettingsModal } from './components/SettingsModal';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
-import { db } from './firebase';
+import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
-
-enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
-}
-
-interface FirestoreErrorInfo {
-  error: string;
-  operationType: OperationType;
-  path: string | null;
-}
-
-function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
-  const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
-    operationType,
-    path
-  };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
-}
+import { useFirebase } from './components/FirebaseProvider';
+import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
 
 const KurdishFlag = memo(({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
@@ -164,6 +141,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const App: React.FC = () => {
   const { t, i18n } = useTranslation();
+  const { user, userProfile, loading } = useFirebase();
   const [state, setState] = useState<AppState>({
     userInput: '',
     mode: RegionMode.WESTERN,
@@ -175,16 +153,7 @@ const App: React.FC = () => {
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
   const [isPartnersLoading, setIsPartnersLoading] = useState(false);
   const [isExportTerminalOpen, setIsExportTerminalOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [geminiKey, setGeminiKey] = useState(localStorage.getItem('gemini_api_key') || '');
   const [showOBD, setShowOBD] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (geminiKey) {
-      localStorage.setItem('gemini_api_key', geminiKey);
-    }
-  }, [geminiKey]);
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -229,14 +198,6 @@ const App: React.FC = () => {
     }
   }, [state.isStarted]);
 
-  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => setState(prev => ({ ...prev, image: e.target?.result as string, error: undefined }));
-    reader.readAsDataURL(file);
-  }, []);
-
   const saveRepairToFirestore = async (userInput: string, analysis: AnalysisResult) => {
     const repairData = {
       id: crypto.randomUUID(),
@@ -252,15 +213,14 @@ const App: React.FC = () => {
   };
 
   const startAnalysis = useCallback(async () => {
-    if (!state.userInput.trim() && !state.image) {
-      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image.") }));
+    if (!state.userInput.trim()) {
+      setState(prev => ({ ...prev, error: t('common.provide_description', "Please provide a description.") }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
     const startTime = Date.now();
     try {
-      const pureBase64 = state.image?.split(',')[1];
-      const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
+      const analysis = await analyzeProblem(state.userInput, undefined, state.mode);
       
       if (!analysis || typeof analysis !== 'object') {
         throw new Error(t('common.invalid_analysis_payload', "Invalid analysis payload received."));
@@ -274,11 +234,10 @@ const App: React.FC = () => {
       const errorMessage = formatAppError(err, state.mode);
       setState(prev => ({ ...prev, isAnalyzing: false, error: String(errorMessage) }));
     }
-  }, [state.userInput, state.image, state.mode]);
+  }, [state.userInput, state.mode]);
 
   const resetApp = useCallback(() => {
-    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, image: undefined, userInput: '', error: undefined }));
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, userInput: '', error: undefined }));
   }, []);
 
   const setInitialMode = useCallback((mode: RegionMode) => {
@@ -291,6 +250,22 @@ const App: React.FC = () => {
     i18n.changeLanguage(langMap[mode]);
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
   }, [i18n]);
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   const isRTL = state.mode !== RegionMode.WESTERN;
 
@@ -439,7 +414,7 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
+      <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
         <SunBackground />
         
         {/* Global B2B Utility Bar at the Very Top */}
@@ -466,6 +441,42 @@ const App: React.FC = () => {
             <Globe className="w-5 h-5 text-cyan-400" />
           </div>
           <div className="flex items-center gap-4">
+            {loading ? (
+              <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
+            ) : user ? (
+              <div className="flex items-center gap-3">
+                <div className="hidden md:flex flex-col items-end">
+                  <span className="text-[10px] font-black text-white uppercase tracking-tight leading-none">
+                    {userProfile?.displayName || user.displayName}
+                  </span>
+                  <span className="text-[8px] font-bold text-cyan-400 uppercase tracking-widest mt-1">
+                    {userProfile?.role || 'User'}
+                  </span>
+                </div>
+                <div className="relative group">
+                  <img 
+                    src={user.photoURL || ''} 
+                    alt="Profile" 
+                    className="w-10 h-10 rounded-xl border border-white/10 group-hover:border-cyan-500/50 transition-all cursor-pointer"
+                    referrerPolicy="no-referrer"
+                  />
+                  <button 
+                    onClick={handleLogout}
+                    className="absolute -bottom-1 -right-1 p-1.5 bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                  >
+                    <LogOut size={10} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={handleLogin}
+                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95"
+              >
+                <LogIn size={14} />
+                <span className="hidden sm:inline">Login</span>
+              </button>
+            )}
             <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
@@ -476,12 +487,6 @@ const App: React.FC = () => {
               <Activity size={14} />
               <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{t('common.obd_breaker', 'OBD Breaker')}</span>
             </button>
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-2 bg-slate-800/80 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-cyan-400 transition-all active:scale-95"
-            >
-              <Settings size={18} />
-            </button>
           </div>
         </header>
 
@@ -489,15 +494,6 @@ const App: React.FC = () => {
           <ExportTerminal 
             onClose={() => setIsExportTerminalOpen(false)} 
             mode={state.mode}
-          />
-        )}
-
-        {isSettingsOpen && (
-          <SettingsModal 
-            isOpen={isSettingsOpen}
-            onClose={() => setIsSettingsOpen(false)}
-            currentKey={geminiKey}
-            onSave={setGeminiKey}
           />
         )}
 
@@ -564,13 +560,6 @@ const App: React.FC = () => {
                    <span>{t('common.paste', 'PASTE')}</span>
                  </button>
                  <button 
-                   onClick={() => fileInputRef.current?.click()}
-                   className="px-4 py-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
-                 >
-                   <Camera size={14} />
-                   <span>{t('common.scan', 'SCAN')}</span>
-                 </button>
-                 <button 
                    onClick={() => setShowOBD(true)}
                    className="px-4 py-2.5 bg-slate-800/40 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
                  >
@@ -614,18 +603,6 @@ const App: React.FC = () => {
                </div>
             </div>
           </div>
-          <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
-            {state.image ? (
-              <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
-            ) : (
-              <div className="flex flex-col items-center gap-2 opacity-40">
-                <span className="text-3xl">📸</span>
-                <span className="text-[10px] font-bold uppercase">
-                  {t('common.add_photo')}
-                </span>
-              </div>
-            )}
-          </div>
           
           <div className="mt-8">
             <VerifiedPartnersGrid />
@@ -652,7 +629,6 @@ const App: React.FC = () => {
         </div>
         {state.isAnalyzing && <ProtocolInitialization />}
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} /></div>}
-        <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
       </div>
     );
   };
