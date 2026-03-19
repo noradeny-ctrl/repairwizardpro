@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Wrench, ShieldAlert, Target, Zap, Activity, ExternalLink, Clock, BarChart, Info, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Circle, ChevronRight, ChevronLeft, Wrench, ShieldAlert, Target, Zap, Activity, ExternalLink, Clock, BarChart, Info, AlertTriangle, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { RegionMode } from '../types';
@@ -17,11 +17,19 @@ interface StepByStepGuideProps {
 const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, onClose, safetyWarning, toolsNeeded = [] }) => {
   const { t } = useTranslation();
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [prioritySteps, setPrioritySteps] = useState<number[]>([]);
   const [readyTools, setReadyTools] = useState<string[]>([]);
   const isRTL = mode !== RegionMode.WESTERN;
 
   const toggleStep = (index: number) => {
     setCompletedSteps(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
+
+  const togglePriority = (e: React.MouseEvent, index: number) => {
+    e.stopPropagation();
+    setPrioritySteps(prev => 
       prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
     );
   };
@@ -69,7 +77,24 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
 
   return (
     <div className={`flex flex-col h-full bg-slate-950/40 ${isRTL ? 'rtl' : 'ltr'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="p-6 space-y-8">
+      <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50 safe-area-pt">
+        <div className="flex flex-col">
+          <h2 className="font-black text-[10px] tracking-[0.3em] uppercase text-cyan-500 mb-2">
+            {t('common.repair_guide', 'REPAIR GUIDE')}
+          </h2>
+          <div className="flex items-center gap-3">
+             <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-cyan-500 transition-all duration-700 glow-cyan" style={{ width: `${progress}%` }}></div>
+             </div>
+             <span className="text-[10px] font-black text-cyan-400 font-mono tracking-tighter">{progress}%</span>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-white bg-white/5 border border-white/10 w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-90">
+          ✕
+        </button>
+      </div>
+
+      <div className="flex-1 p-6 space-y-8 ios-scroll pb-24 hide-scrollbar">
         {safetyWarning && (
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-start gap-3 animate-pulse">
             <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={18} />
@@ -112,6 +137,7 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
         <div className="space-y-3">
           {instructions.map((step, index) => {
             const isCompleted = completedSteps.includes(index);
+            const isPriority = prioritySteps.includes(index);
             const isCurrent = index === firstUncompletedIndex;
 
             return (
@@ -124,22 +150,43 @@ const StepByStepGuide: React.FC<StepByStepGuideProps> = ({ instructions, mode, o
                 className={`group relative p-5 rounded-[1.5rem] border transition-all cursor-pointer ${
                   isCompleted 
                     ? 'bg-emerald-500/5 border-emerald-500/20 opacity-60' 
-                    : isCurrent
-                      ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]'
-                      : 'bg-slate-900/40 border-white/5 hover:border-white/10'
+                    : isPriority
+                      ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_20px_rgba(239,68,68,0.1)]'
+                      : isCurrent
+                        ? 'bg-cyan-500/10 border-cyan-500/40 shadow-[0_0_20px_rgba(6,182,212,0.1)]'
+                        : 'bg-slate-900/40 border-white/5 hover:border-white/10'
                 }`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-mono text-xs font-black transition-all ${
                     isCompleted 
                       ? 'bg-emerald-500 text-white' 
-                      : isCurrent
-                        ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20'
-                        : 'bg-slate-800 text-slate-500'
+                      : isPriority
+                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
+                        : isCurrent
+                          ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20'
+                          : 'bg-slate-800 text-slate-500'
                   }`}>
                     {isCompleted ? <CheckCircle2 size={16} /> : index + 1}
                   </div>
                   <div className="flex-1 pt-1">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      {isPriority && (
+                        <span className="text-[8px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1">
+                          <Star size={10} fill="currentColor" />
+                          {t('common.critical_step', 'CRITICAL STEP')}
+                        </span>
+                      )}
+                      <button 
+                        onClick={(e) => togglePriority(e, index)}
+                        className={`p-1 rounded-lg transition-colors ${
+                          isPriority ? 'text-red-500 bg-red-500/10' : 'text-slate-600 hover:text-red-400 hover:bg-red-500/5'
+                        }`}
+                        title={t('common.toggle_priority', 'Toggle Priority')}
+                      >
+                        <Star size={12} fill={isPriority ? "currentColor" : "none"} />
+                      </button>
+                    </div>
                     <p className={`text-xs font-bold leading-relaxed transition-all ${
                       isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'
                     }`}>

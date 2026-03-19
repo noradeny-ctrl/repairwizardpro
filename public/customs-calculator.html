@@ -320,7 +320,14 @@
             const vehicle = document.getElementById('vehicleInfo').value || "VEHICLE_UNSPECIFIED";
             
             if (isNaN(price) || price <= 0) {
-                alert("Please enter a valid purchase price.");
+                const receiptContent = document.getElementById('receiptContent');
+                receiptContent.innerHTML = `
+                    <div style="text-align: center; color: #ff4444; font-size: 0.8rem; margin-top: 4rem; border: 1px solid #ff4444; padding: 1rem; border-radius: 8px; background: rgba(255, 68, 68, 0.1);">
+                        ERROR: INVALID_INPUT_DATA<br>
+                        PLEASE ENTER A VALID PURCHASE PRICE.
+                    </div>
+                `;
+                document.getElementById('totalContainer').style.display = 'none';
                 return;
             }
 

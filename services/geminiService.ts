@@ -42,6 +42,8 @@ MODULE 1: APPLIANCE & VEHICLE DIAGNOSTICS
 - INITIALIZATION: Start the diagnosis with a "Protocol Initialized" confirmation.
 - DEPTH: Provide deep technical insight into WHY a component failed (e.g., "Capacitor leakage due to grid instability").
 - VIN SCAN: If the input is a 17-digit VIN or an image of a VIN plate, set resultType to 'VIN_SCAN' and decode the vehicle specs.
+- OBD SCAN: If the input is a 5-character OBD-II fault code (e.g., P0300, B1234, U0100, C0045), set resultType to 'OBD_SCAN' and provide a deep diagnostic analysis.
+- IMAGE ANALYSIS: If an image is provided, analyze it to identify car parts, damage, dashboard warning lights, or VIN plates. Use visual cues to enhance the diagnosis.
 - COST ANALYSIS: For all repairs, estimate the 'repairCost' and the vehicle's 'marketValue' in USD.
 - Iraqi Localization:
   - Prioritize "Power Surge" diagnostics (Mowlida/Grid switching instability).
@@ -95,7 +97,7 @@ export async function analyzeProblem(textInput: string, imageBase64: string | un
           type: Type.OBJECT,
           properties: {
             diagnosis: { type: Type.STRING },
-            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN", "VIN_SCAN"] },
+            resultType: { type: Type.STRING, enum: ["FIX", "TEST", "LEARN", "VIN_SCAN", "OBD_SCAN"] },
             partName: { type: Type.STRING },
             toolsNeeded: { 
               type: Type.ARRAY,

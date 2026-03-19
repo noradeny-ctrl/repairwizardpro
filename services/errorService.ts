@@ -49,18 +49,23 @@ const ERROR_MESSAGES: Record<ErrorCategory, Record<RegionMode, string>> = {
   }
 };
 
-export function formatAppError(error: any, mode: RegionMode): string {
+export function formatAppError(error: any, mode: RegionMode): { category: ErrorCategory; message: string } {
   let category: ErrorCategory = 'generic';
 
   if (error instanceof WizardError) {
     category = error.category as ErrorCategory;
-  } else if (error?.message?.includes('permission-denied')) {
+  } else if (error?.message?.includes('permission-denied') || error?.message?.includes('PERMISSION_DENIED')) {
     category = 'permission';
-  } else if (error?.message?.includes('quota')) {
+  } else if (error?.message?.includes('quota') || error?.message?.includes('429') || error?.message?.includes('Rate limit')) {
     category = 'quota';
   } else if (error?.message?.includes('offline') || !navigator.onLine) {
     category = 'network';
+  } else if (error?.message?.includes('safety') || error?.message?.includes('SAFETY')) {
+    category = 'safety';
   }
 
-  return ERROR_MESSAGES[category][mode] || ERROR_MESSAGES.generic[mode];
+  return {
+    category,
+    message: ERROR_MESSAGES[category][mode] || ERROR_MESSAGES.generic[mode]
+  };
 }

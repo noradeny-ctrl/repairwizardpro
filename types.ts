@@ -97,4 +97,6 @@ export interface AppState {
   isStarted: boolean;
   result?: AnalysisResult;
   error?: string;
+  errorCategory?: 'network' | 'safety' | 'quota' | 'permission' | 'generic' | 'validation';
+  selectedImage?: string;
 }

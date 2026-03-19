@@ -48,6 +48,8 @@ interface ResultViewProps {
   onReset: () => void;
   recommendedPartners?: Partner[];
   isPartnersLoading?: boolean;
+  user: any;
+  onLogin: () => void;
 }
 
 const ResultView: React.FC<ResultViewProps> = ({ 
@@ -55,7 +57,9 @@ const ResultView: React.FC<ResultViewProps> = ({
   mode, 
   onReset, 
   recommendedPartners = [],
-  isPartnersLoading = false
+  isPartnersLoading = false,
+  user,
+  onLogin
 }) => {
   const { t } = useTranslation();
   const [isGuideOpen, setIsGuideOpen] = useState(false);
@@ -96,7 +100,7 @@ const ResultView: React.FC<ResultViewProps> = ({
 
   return (
     <div className={`flex flex-col h-full bg-[#0a0f1e] overflow-hidden ${isRTL ? 'rtl text-right' : 'ltr text-left'}`} dir={isRTL ? 'rtl' : 'ltr'}>
-      <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50">
+      <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50 safe-area-pt">
         <div className="flex flex-col">
           <h2 className="font-black text-[10px] tracking-[0.3em] uppercase text-cyan-500 mb-2">
             {t('common.wizard_report')}
@@ -108,12 +112,12 @@ const ResultView: React.FC<ResultViewProps> = ({
              <span className="text-[10px] font-black text-cyan-400 font-mono tracking-tighter">100%</span>
           </div>
         </div>
-        <button onClick={onReset} className="text-white bg-white/5 border border-white/10 w-11 h-11 rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-90">
+        <button onClick={onReset} className="text-white bg-white/5 border border-white/10 w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-xl active:scale-90">
           ✕
         </button>
       </div>
 
-      <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
+      <div className="flex-1 p-6 space-y-10 ios-scroll pb-48 hide-scrollbar">
         {result.resultType === 'VIN_SCAN' && result.vinScanData && (
           <section className="animate-slide-up">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-cyan-500/30 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
@@ -353,15 +357,28 @@ const ResultView: React.FC<ResultViewProps> = ({
                </div>
 
                <div className="mt-8 pt-6 border-t border-white/5">
-                 <a 
-                   href={vinReportWhatsapp}
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   className="w-full py-5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 group"
-                 >
-                   <span className="font-black text-xs uppercase tracking-widest">{t('common.get_full_report', 'Get Full History Report')}</span>
-                   <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
-                 </a>
+                 {user ? (
+                   <a 
+                     href={vinReportWhatsapp}
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     className="w-full py-5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-lg shadow-cyan-900/20 group"
+                   >
+                     <span className="font-black text-xs uppercase tracking-widest">{t('common.get_full_report', 'Get Full History Report')}</span>
+                     <ExternalLink size={14} className="group-hover:translate-x-1 transition-transform" />
+                   </a>
+                 ) : (
+                   <button 
+                     onClick={onLogin}
+                     className="w-full py-5 bg-slate-800 hover:bg-slate-700 text-white border border-cyan-500/30 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-95 shadow-lg group"
+                   >
+                     <div className="flex items-center gap-2">
+                       <ShieldCheck size={14} className="text-cyan-400" />
+                       <span className="font-black text-xs uppercase tracking-widest">{t('common.login_for_report', 'Login to Unlock Full Report')}</span>
+                     </div>
+                     <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{t('common.secure_access', 'Secure Authentication Required')}</span>
+                   </button>
+                 )}
                </div>
             </div>
           </section>
@@ -459,7 +476,7 @@ const ResultView: React.FC<ResultViewProps> = ({
         )}
       </div>
       
-      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24 z-50">
+      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24 z-50 safe-area-pb">
          <button onClick={onReset} className="w-full py-6 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-[2.25rem] text-[10px] font-black uppercase tracking-[0.3em] text-white shadow-2xl active:scale-95 transition-all">
           {t('common.reset')}
          </button>

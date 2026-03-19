@@ -2,7 +2,7 @@
 // Main Application Component
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, Clipboard, AlertTriangle, Activity, ArrowLeft } from 'lucide-react';
+import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -147,6 +147,7 @@ const App: React.FC = () => {
     mode: RegionMode.WESTERN,
     isAnalyzing: false,
     isStarted: false,
+    selectedImage: undefined,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -154,6 +155,8 @@ const App: React.FC = () => {
   const [isPartnersLoading, setIsPartnersLoading] = useState(false);
   const [isExportTerminalOpen, setIsExportTerminalOpen] = useState(false);
   const [showOBD, setShowOBD] = useState(false);
+  const [detectedOBD, setDetectedOBD] = useState<string | null>(null);
+  const [obdInput, setObdInput] = useState('');
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -213,14 +216,14 @@ const App: React.FC = () => {
   };
 
   const startAnalysis = useCallback(async () => {
-    if (!state.userInput.trim()) {
-      setState(prev => ({ ...prev, error: t('common.provide_description', "Please provide a description.") }));
+    if (!state.userInput.trim() && !state.selectedImage) {
+      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image.") }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
     const startTime = Date.now();
     try {
-      const analysis = await analyzeProblem(state.userInput, undefined, state.mode);
+      const analysis = await analyzeProblem(state.userInput, state.selectedImage, state.mode);
       
       if (!analysis || typeof analysis !== 'object') {
         throw new Error(t('common.invalid_analysis_payload', "Invalid analysis payload received."));
@@ -231,8 +234,8 @@ const App: React.FC = () => {
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
       console.error("Analysis Failure:", err);
-      const errorMessage = formatAppError(err, state.mode);
-      setState(prev => ({ ...prev, isAnalyzing: false, error: String(errorMessage) }));
+      const { message, category } = formatAppError(err, state.mode);
+      setState(prev => ({ ...prev, isAnalyzing: false, error: message, errorCategory: category }));
     }
   }, [state.userInput, state.mode]);
 
@@ -267,11 +270,47 @@ const App: React.FC = () => {
     }
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const base64Data = base64String.split(',')[1];
+        setState(prev => ({ ...prev, selectedImage: base64Data }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setState(prev => ({ ...prev, selectedImage: undefined }));
+  };
+
   const isRTL = state.mode !== RegionMode.WESTERN;
 
   const isValidVin = useMemo(() => {
     return /^[A-HJ-NPR-Z0-9]{17}$/i.test(state.userInput.trim());
   }, [state.userInput]);
+
+  const isValidObd = useMemo(() => {
+    // Basic OBD-II code pattern: P, B, U, or C followed by 4 digits
+    if (obdInput.trim()) {
+      return /^[PBUC][0-9]{4}$/i.test(obdInput.trim());
+    }
+    // For main input, check if it contains a code anywhere
+    return /[PBUC][0-9]{4}/i.test(state.userInput);
+  }, [state.userInput, obdInput]);
+
+  useEffect(() => {
+    if (obdInput.trim()) {
+      const match = obdInput.trim().match(/[PBUC][0-9]{4}/i);
+      setDetectedOBD(match ? match[0].toUpperCase() : null);
+    } else {
+      const match = state.userInput.match(/[PBUC][0-9]{4}/i);
+      setDetectedOBD(match ? match[0].toUpperCase() : null);
+    }
+  }, [state.userInput, obdInput]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     let val = e.target.value;
@@ -374,23 +413,44 @@ const App: React.FC = () => {
 
   // 1. Handle fatal errors first, before any other conditional returns
   if (state.error) {
+    const getErrorIcon = () => {
+      switch (state.errorCategory) {
+        case 'network': return <Globe className="w-10 h-10 text-red-400" />;
+        case 'quota': return <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />;
+        case 'safety': return <AlertTriangle className="w-10 h-10 text-orange-400" />;
+        case 'permission': return <LogOut className="w-10 h-10 text-red-500" />;
+        case 'validation': return <Camera className="w-10 h-10 text-cyan-400" />;
+        default: return <span className="text-4xl">🧙‍♂️</span>;
+      }
+    };
+
     return (
       <div className="flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 text-center animate-fade-in">
         <SunBackground />
         <div className="relative z-10 bg-slate-900/60 border border-red-500/20 rounded-[2.5rem] p-10 max-w-md backdrop-blur-xl shadow-2xl">
           <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
-            <span className="text-4xl">🧙‍♂️</span>
+            {getErrorIcon()}
           </div>
-          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">{t('common.error_title')}</h2>
+          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">
+            {state.errorCategory === 'quota' ? t('common.connection_throttled', 'Connection Throttled') : t('common.error_title')}
+          </h2>
           <p className="text-slate-300 text-sm mb-8 leading-relaxed">
-            {String(state.error)}
+            {state.error}
           </p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
-          >
-            {t('common.retry')}
-          </button>
+          <div className="flex flex-col gap-3">
+            <button 
+              onClick={() => window.location.reload()}
+              className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+            >
+              {t('common.retry')}
+            </button>
+            <button 
+              onClick={() => setState(prev => ({ ...prev, error: undefined, errorCategory: undefined }))}
+              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all"
+            >
+              {t('common.back_to_dashboard', 'Back to Dashboard')}
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -398,7 +458,7 @@ const App: React.FC = () => {
 
   if (!state.isStarted) {
     return (
-      <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden">
+      <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden safe-area-pt">
         <SunBackground />
         <DraggableLogo />
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
@@ -418,10 +478,10 @@ const App: React.FC = () => {
         <SunBackground />
         
         {/* Global B2B Utility Bar at the Very Top */}
-        <div className="w-full bg-emerald-500/5 border-b border-emerald-500/10 backdrop-blur-md z-[60]">
+        <div className="w-full bg-emerald-500/5 border-b border-emerald-500/10 backdrop-blur-md z-[60] safe-area-pt">
           <button 
             onClick={() => setIsExportTerminalOpen(true)}
-            className="w-full py-3 flex items-center justify-center gap-4 hover:bg-emerald-500/10 transition-all group"
+            className="w-full py-4 flex items-center justify-center gap-4 hover:bg-emerald-500/10 transition-all group"
           >
             <div className="flex items-center gap-2">
               <Ship className="text-emerald-400 group-hover:scale-110 transition-transform" size={14} />
@@ -432,7 +492,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
+        <header className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
           <div 
             className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
             onClick={() => setState(prev => ({...prev, isStarted: false}))}
@@ -498,27 +558,108 @@ const App: React.FC = () => {
         )}
 
         {showOBD ? (
-          <main className="flex-1 overflow-y-auto hide-scrollbar relative z-10 p-6">
+          <main className="flex-1 ios-scroll hide-scrollbar relative z-10 p-6">
             <div className="max-w-4xl mx-auto">
               <button 
                 onClick={() => setShowOBD(false)}
-                className="mb-6 flex items-center gap-2 text-[10px] font-black text-cyan-500/60 hover:text-cyan-400 uppercase tracking-[0.3em] transition-colors group"
+                className="mb-6 py-2 flex items-center gap-2 text-[10px] font-black text-cyan-500/60 hover:text-cyan-400 uppercase tracking-[0.3em] transition-colors group"
               >
                 <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
                 {t('common.back_to_dashboard', 'Back to Dashboard')}
               </button>
-              <OBDAnalyzer mode={state.mode} />
+              <OBDAnalyzer mode={state.mode} initialCode={detectedOBD || ''} />
             </div>
           </main>
         ) : (
-          <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
-            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : 'border-white/5'}`}>
-            <textarea 
-              className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" 
-              placeholder={t('common.describe_problem')} 
-              value={state.userInput} 
-              onChange={handleInputChange} 
-            />
+          <main className="flex-1 ios-scroll p-6 space-y-6 hide-scrollbar relative z-10">
+            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : (detectedOBD && !obdInput ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5')}`}>
+            <div className="relative">
+              <textarea 
+                className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium relative z-10" 
+                placeholder={t('common.describe_problem')} 
+                value={state.userInput} 
+                onChange={handleInputChange} 
+              />
+              {/* Highlight Overlay for Main Textarea (Simple indicator) */}
+              <AnimatePresence>
+                {detectedOBD && !obdInput && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="absolute top-0 right-0 z-20 flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-xl backdrop-blur-sm"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
+                      {t('common.code_detected', 'CODE DETECTED')}: {detectedOBD}
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Dedicated OBD Input Section */}
+            <div className="relative group/obd mt-2 mb-4">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <Activity size={16} className={`${obdInput.trim() && isValidObd ? 'text-amber-400' : 'text-cyan-500/30'} group-focus-within/obd:text-cyan-400 transition-colors`} />
+              </div>
+              <input 
+                type="text"
+                placeholder={t('common.enter_obd_code', 'OR ENTER OBD-II CODE (e.g. P0300)')}
+                className={`w-full bg-black/20 border rounded-2xl py-3 pl-12 pr-4 text-sm font-mono transition-all outline-none placeholder-slate-600 ${obdInput.trim() && isValidObd ? 'border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-white/5 text-cyan-400 focus:border-cyan-500/30'}`}
+                value={obdInput}
+                onChange={(e) => setObdInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isValidObd) {
+                    setShowOBD(true);
+                  }
+                }}
+              />
+              <AnimatePresence>
+                {obdInput.trim() && isValidObd && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2"
+                  >
+                    <div className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[7px] font-black text-amber-400 uppercase tracking-tighter">
+                      VALID
+                    </div>
+                    <button 
+                      onClick={() => setShowOBD(true)}
+                      className="px-3 py-1 bg-amber-500 text-black rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
+                    >
+                      {t('common.analyze_now', 'ANALYZE NOW')}
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Image Preview */}
+            <AnimatePresence>
+              {state.selectedImage && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="relative w-32 h-32 mb-4 group"
+                >
+                  <img 
+                    src={`data:image/jpeg;base64,${state.selectedImage}`} 
+                    alt="Selected" 
+                    className="w-full h-full object-cover rounded-2xl border-2 border-cyan-500/50"
+                  />
+                  <button 
+                    onClick={removeImage}
+                    className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Inline Error Message */}
             <AnimatePresence>
@@ -542,23 +683,20 @@ const App: React.FC = () => {
             {/* Input Actions Toolbar */}
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
                <div className="flex gap-2">
-                 <button 
-                   onClick={async () => {
-                     try {
-                       const text = await navigator.clipboard.readText();
-                       if (text) {
-                         const cleaned = text.trim().toUpperCase().substring(0, 17);
-                         setState(prev => ({ ...prev, userInput: cleaned, error: undefined }));
-                       }
-                     } catch (err) {
-                       setState(prev => ({ ...prev, error: t('common.clipboard_denied', "Clipboard access denied. Please paste manually.") }));
-                     }
-                   }}
-                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
+                 <input 
+                   type="file" 
+                   accept="image/*" 
+                   id="image-upload" 
+                   className="hidden" 
+                   onChange={handleImageUpload}
+                 />
+                 <label 
+                   htmlFor="image-upload"
+                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
                  >
-                   <Clipboard size={14} className="text-cyan-400" />
-                   <span>{t('common.paste', 'PASTE')}</span>
-                 </button>
+                   <Camera size={14} className="text-cyan-400" />
+                   <span>{t('common.add_photo', 'ADD PHOTO')}</span>
+                 </label>
                  <button 
                    onClick={() => setShowOBD(true)}
                    className="px-4 py-2.5 bg-slate-800/40 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
@@ -584,6 +722,21 @@ const App: React.FC = () => {
                        </div>
                        <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">{t('common.verified', 'VERIFIED')}</span>
                      </motion.div>
+                   )}
+
+                   {isValidObd && (
+                     <motion.button 
+                       initial={{ opacity: 0, scale: 0.8 }}
+                       animate={{ opacity: 1, scale: 1 }}
+                       exit={{ opacity: 0, scale: 0.8 }}
+                       onClick={() => setShowOBD(true)}
+                       className="flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 transition-all group"
+                     >
+                       <Activity size={12} className="text-amber-400 animate-pulse" />
+                       <span className="text-[8px] font-black text-amber-400 uppercase tracking-widest group-hover:text-amber-300">
+                         {t('common.obd_detected', 'OBD CODE DETECTED - ANALYZE?')}
+                       </span>
+                     </motion.button>
                    )}
                  </AnimatePresence>
 
@@ -611,10 +764,10 @@ const App: React.FC = () => {
           <div className="h-40" />
           </main>
         )}
-        <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
+        <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20 safe-area-pb">
           <button 
             onClick={startAnalysis} 
-            disabled={state.isAnalyzing} 
+            disabled={state.isAnalyzing || (!state.userInput.trim() && !state.selectedImage)} 
             className={`w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20 ${state.isAnalyzing ? 'animate-pulse' : ''}`}
           >
             <div className="flex items-center gap-3">
@@ -628,7 +781,7 @@ const App: React.FC = () => {
           </button>
         </div>
         {state.isAnalyzing && <ProtocolInitialization />}
-        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} /></div>}
+        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} user={user} onLogin={handleLogin} /></div>}
       </div>
     );
   };

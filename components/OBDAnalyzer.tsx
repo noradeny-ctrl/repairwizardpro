@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, AlertTriangle, ShoppingCart, Truck, Activity, Terminal, CheckCircle2, Cpu, Zap, History, ChevronRight, Info, ShieldAlert, Loader2, Trash2, X } from 'lucide-react';
+import { Search, AlertTriangle, ShoppingCart, Truck, Activity, Terminal, CheckCircle2, Cpu, Zap, History, ChevronRight, Info, ShieldAlert, Loader2, Trash2, X, Camera, Star } from 'lucide-react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { RegionMode } from '../types';
 import { useTranslation } from 'react-i18next';
@@ -18,18 +18,27 @@ interface OBDCodeData {
   symptoms: string[];
   commonCauses: string[];
   estimatedCost: string;
+  proTip?: string;
+  groundingSources?: { title: string; uri: string }[];
+  repairSteps?: string[];
+  toolsRequired?: string[];
+  difficulty?: 'EASY' | 'MODERATE' | 'HARD' | 'EXPERT';
+  successRate?: string;
+  safetyPrecautions?: string[];
   technicalDetails?: {
     freezeFrameSimulation: string;
     pinoutChecks: string[];
     componentLocation: string;
+    wiringDiagramSummary?: string;
   };
 }
 
 interface OBDAnalyzerProps {
   mode?: RegionMode;
+  initialCode?: string;
 }
 
-const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) => {
+const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, initialCode = '' }) => {
   const { t } = useTranslation();
   const { user } = useFirebase();
 
@@ -44,16 +53,31 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
     t('common.neural_breaker_complete', 'NEURAL BREAKER COMPLETE.')
   ];
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState(initialCode);
+  const [selectedImage, setSelectedImage] = useState<string | undefined>(undefined);
   const [result, setResult] = useState<OBDCodeData | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isDeepScanning, setIsDeepScanning] = useState(false);
   const [logIndex, setLogIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [recentScans, setRecentScans] = useState<OBDCodeData[]>([]);
+  const [priorityChecks, setPriorityChecks] = useState<number[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-trigger search if initialCode is provided
+  useEffect(() => {
+    if (initialCode && !result && !isSearching && !isDeepScanning) {
+      handleSearch();
+    }
+  }, [initialCode]);
+
+  const togglePriority = (index: number) => {
+    setPriorityChecks(prev => 
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
 
   const getStatus = () => {
     if (isSearching || isDeepScanning) return 'SCANNING';
@@ -99,17 +123,18 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
     }
   }, [result, isSearching, isDeepScanning]);
 
-  const saveToRecent = (data: OBDCodeData) => {
+  const saveToRecent = useCallback((data: OBDCodeData) => {
     setRecentScans(prev => {
       const filtered = prev.filter(s => s.code !== data.code);
       const updated = [data, ...filtered].slice(0, 5);
       localStorage.setItem('obd_recent_scans', JSON.stringify(updated));
       return updated;
     });
-  };
+  }, []);
 
   const handleClear = useCallback(() => {
     setInput('');
+    setSelectedImage(undefined);
     setResult(null);
     setError(null);
     setIsSearching(false);
@@ -122,8 +147,25 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
     return `https://www.amazon.com/s?k=${query}&tag=repairwizard-20`;
   };
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        const base64Data = base64String.split(',')[1];
+        setSelectedImage(base64Data);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(undefined);
+  };
+
   const handleSearch = useCallback(async (deep = false) => {
-    if (!input.trim()) return;
+    if (!input.trim() && !selectedImage) return;
     
     if (deep) setIsDeepScanning(true);
     else setIsSearching(true);
@@ -148,15 +190,38 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
         languagePrompt = `Response must be in clear, simple, non-technical English. ${clarityInstruction}`;
       }
 
-      const prompt = deep 
-        ? `Perform a DEEP NEURAL ANALYSIS for the following car problem or OBD-II code: "${input.trim()}". ${languagePrompt} If a description is provided, first identify the most likely OBD-II code. Provide a non-technical summary for the user, but include deep technical details like freeze frame simulation, pinout checks, and component location in the technicalDetails section for professional reference.`
-        : `The user has provided the following input: "${input.trim()}". ${languagePrompt} If this is an OBD-II code, analyze it. If this is a description of a car problem, identify the most likely OBD-II fault code associated with these symptoms and then analyze it. Provide a clear, non-technical diagnostic report for the owner, while including technical details like freeze frame simulation, pinout checks, and component location in the technicalDetails section if applicable.`;
+      const promptText = deep 
+        ? `Perform an ULTIMATE NEURAL ANALYSIS for the following car problem or OBD-II code: "${input.trim()}". ${languagePrompt} 
+        Use Google Search to find:
+        1. The latest repair trends and specific technical service bulletins (TSBs).
+        2. Common forum discussions (Reddit, specialized car forums) for real-world fixes.
+        3. Precise part numbers and real-time availability.
+        4. Step-by-step repair instructions for a DIYer and critical safety precautions.
+        5. Success rate of common fixes.
+        
+        If a description or image is provided, first identify the most likely OBD-II code. 
+        Provide a non-technical summary for the user, a specific 'proTip' for the owner, and include deep technical details for professional reference.`
+        : `The user has provided the following input: "${input.trim()}". ${languagePrompt} 
+        Use Google Search to verify the most common causes, current repair costs, and required tools for this specific vehicle issue. 
+        If this is an OBD-II code, analyze it. If this is a description or image of a car problem, identify the most likely OBD-II fault code associated with these symptoms and then analyze it. 
+        Provide a clear, non-technical diagnostic report, a 'proTip' for the owner, step-by-step repair guide with safety precautions, and technical details for professional reference.`;
+
+      const parts: any[] = [{ text: promptText }];
+      if (selectedImage) {
+        parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: selectedImage
+          }
+        });
+      }
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: prompt,
+        contents: { parts },
         config: {
-          systemInstruction: "You are a friendly, expert car mechanic who explains complex car problems to people who know nothing about cars. Your goal is to be helpful and clear, using simple analogies and everyday language for the 'translation' and 'threatDescription' fields.",
+          systemInstruction: "You are a friendly, expert car mechanic who explains complex car problems to people who know nothing about cars. Your goal is to be helpful and clear, using simple analogies and everyday language for the 'translation' and 'threatDescription' fields. Use the 'proTip' field to give one specific, high-value piece of advice (e.g., 'Check your gas cap first, it might just be loose!').",
+          tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -169,21 +234,41 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
               symptoms: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of symptoms in plain language." },
               commonCauses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of common causes in plain language." },
               estimatedCost: { type: Type.STRING },
+              proTip: { type: Type.STRING, description: "A specific, actionable tip for the car owner." },
+              repairSteps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Step-by-step repair instructions." },
+              toolsRequired: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of tools needed for the repair." },
+              difficulty: { type: Type.STRING, enum: ["EASY", "MODERATE", "HARD", "EXPERT"] },
+              successRate: { type: Type.STRING, description: "Estimated success rate of the repair (e.g., '85%')." },
+              safetyPrecautions: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Critical safety warnings for this specific repair." },
               technicalDetails: {
                 type: Type.OBJECT,
                 properties: {
                   freezeFrameSimulation: { type: Type.STRING, description: "Technical data for mechanics." },
                   pinoutChecks: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Technical pinout steps." },
-                  componentLocation: { type: Type.STRING, description: "Technical location details." }
+                  componentLocation: { type: Type.STRING, description: "Technical location details." },
+                  wiringDiagramSummary: { type: Type.STRING, description: "Brief summary of the wiring diagram or circuit involved." }
                 }
               }
             },
-            required: ["code", "translation", "threatLevel", "threatDescription", "partName", "symptoms", "commonCauses", "estimatedCost"]
+            required: ["code", "translation", "threatLevel", "threatDescription", "partName", "symptoms", "commonCauses", "estimatedCost", "proTip", "repairSteps", "toolsRequired", "difficulty", "successRate", "safetyPrecautions"]
           }
         }
       });
 
       const data = JSON.parse(response.text);
+      
+      // Extract grounding sources
+      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (groundingChunks) {
+        data.groundingSources = groundingChunks
+          .filter(chunk => chunk.web)
+          .map(chunk => ({
+            title: chunk.web?.title || 'Source',
+            uri: chunk.web?.uri || ''
+          }))
+          .slice(0, 3);
+      }
+
       setResult(data);
       saveToRecent(data);
 
@@ -228,7 +313,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
       setIsSearching(false);
       setIsDeepScanning(false);
     }
-  }, [input]);
+  }, [input, selectedImage, mode, user, t, saveToRecent]);
 
 
 
@@ -336,6 +421,33 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
           {/* Search Input */}
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
+            
+            {/* Image Preview */}
+            <AnimatePresence>
+              {selectedImage && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                  className="absolute -top-32 left-0 z-20"
+                >
+                  <div className="relative w-24 h-24 group">
+                    <img 
+                      src={`data:image/jpeg;base64,${selectedImage}`} 
+                      alt="Selected" 
+                      className="w-full h-full object-cover rounded-2xl border-2 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                    />
+                    <button 
+                      onClick={removeImage}
+                      className="absolute -top-2 -right-2 p-1.5 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors border border-white/20"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="relative flex items-center bg-[#0d1117] border border-cyan-500/30 rounded-2xl p-2 shadow-2xl">
               <Search className="ml-4 text-cyan-400/50" size={20} />
               <input 
@@ -347,16 +459,30 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
               <div className="flex items-center gap-2 pr-2">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  id="obd-image-upload" 
+                  className="hidden" 
+                  onChange={handleImageUpload}
+                />
+                <label 
+                  htmlFor="obd-image-upload"
+                  className="p-5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-cyan-400 cursor-pointer transition-all active:scale-95 flex items-center justify-center"
+                  title={t('common.add_photo', 'Add Photo')}
+                >
+                  <Camera size={20} />
+                </label>
                 <button 
                   onClick={handleClear}
-                  className="px-4 py-4 text-[10px] font-black text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors border border-white/5 rounded-xl bg-white/5 whitespace-nowrap"
+                  className="px-5 py-5 text-[10px] font-black text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors border border-white/5 rounded-xl bg-white/5 whitespace-nowrap"
                 >
                   {t('common.clear_all', 'Clear All')}
                 </button>
                 <button 
                   onClick={() => handleSearch()}
-                  disabled={isSearching || isDeepScanning}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-8 py-4 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                  disabled={isSearching || isDeepScanning || (!input.trim() && !selectedImage)}
+                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-10 py-5 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                 >
                   {isSearching ? <Activity className="animate-spin" size={18} /> : t('common.decode', 'DECODE')}
                 </button>
@@ -426,7 +552,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
 
           {/* Results Area */}
           <AnimatePresence mode="wait">
-            {result && !isSearching && !isDeepScanning ? (
+            {result && !isSearching ? (
               <motion.div 
                 ref={resultsRef}
                 key={result.code}
@@ -563,6 +689,40 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                   </div>
                 </motion.div>
 
+                {/* Safety Warning Section */}
+                {result.threatLevel !== 'STABLE' && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`p-6 border rounded-3xl flex items-start gap-4 relative overflow-hidden ${
+                      result.threatLevel === 'CRITICAL' 
+                        ? 'bg-red-500/10 border-red-500/30 text-red-400' 
+                        : 'bg-yellow-500/10 border-yellow-500/30 text-yellow-400'
+                    }`}
+                  >
+                    <div className={`p-3 rounded-2xl ${
+                      result.threatLevel === 'CRITICAL' ? 'bg-red-500/20' : 'bg-yellow-500/20'
+                    }`}>
+                      <AlertTriangle size={24} />
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">
+                        {t('common.safety_warning', 'Safety Warning')}
+                      </div>
+                      <p className="text-sm font-bold leading-relaxed">
+                        {result.threatDescription}
+                      </p>
+                    </div>
+                    <motion.div 
+                      animate={{ opacity: [0.1, 0.3, 0.1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute -right-4 -bottom-4"
+                    >
+                      <ShieldAlert size={80} />
+                    </motion.div>
+                  </motion.div>
+                )}
+
                 {/* Translation Box */}
                 <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-3xl p-10 backdrop-blur-md relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -577,13 +737,50 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                     {result.translation}
                     <span className="text-cyan-500/40 text-4xl font-serif absolute -bottom-8 ml-2">"</span>
                   </p>
+
+                  {/* Pro Tip Section */}
+                  {result.proTip && (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="mt-8 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-start gap-4 relative z-10"
+                    >
+                      <div className="p-2 bg-emerald-500/20 rounded-lg text-emerald-400">
+                        <Zap size={16} />
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-black text-emerald-500/60 uppercase tracking-widest mb-1">{t('common.pro_tip', 'Mechanic Pro Tip')}</div>
+                        <p className="text-sm text-emerald-50/80 font-medium italic">{result.proTip}</p>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Grounding Sources */}
+                  {result.groundingSources && result.groundingSources.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-white/5 flex flex-wrap gap-3 relative z-10">
+                      <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest w-full mb-1">{t('common.verified_sources', 'Verified Intelligence Sources')}:</span>
+                      {result.groundingSources.map((source, i) => (
+                        <a 
+                          key={i}
+                          href={source.uri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[9px] text-cyan-400/60 hover:text-cyan-400 flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md border border-white/5 transition-colors"
+                        >
+                          <Info size={10} />
+                          {source.title}
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Technical Deep Dive Button */}
                 {!result.technicalDetails && (
                   <button 
                     onClick={() => handleSearch(true)}
-                    className="w-full py-4 bg-slate-900/50 border border-cyan-500/20 rounded-2xl text-[10px] font-black text-cyan-400/60 uppercase tracking-[0.4em] hover:bg-cyan-500/10 hover:text-cyan-400 transition-all flex items-center justify-center gap-2 group"
+                    disabled={isSearching || isDeepScanning || (!input.trim() && !selectedImage)}
+                    className="w-full py-4 bg-slate-900/50 border border-cyan-500/20 rounded-2xl text-[10px] font-black text-cyan-400/60 uppercase tracking-[0.4em] hover:bg-cyan-500/10 hover:text-cyan-400 transition-all flex items-center justify-center gap-2 group disabled:opacity-50"
                   >
                     <Info size={14} className="group-hover:rotate-12 transition-transform" />
                     {t('common.deep_analysis_btn', 'Initialize Deep Neural Analysis')}
@@ -606,13 +803,13 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                       <div className="text-[8px] text-cyan-500/40 font-mono uppercase">{t('common.neural_link_active', 'Neural Link: Active')}</div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       <div className="space-y-3">
                         <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
                           <Activity size={14} className="text-cyan-500/60" />
                           {t('common.freeze_frame', 'Freeze Frame Simulation')}
                         </div>
-                        <div className="p-5 bg-black/60 rounded-2xl font-mono text-xs text-cyan-400/90 leading-relaxed border border-white/5 shadow-inner">
+                        <div className="p-5 bg-black/60 rounded-2xl font-mono text-xs text-cyan-400/90 leading-relaxed border border-white/5 shadow-inner h-full">
                           {result.technicalDetails.freezeFrameSimulation}
                         </div>
                       </div>
@@ -621,8 +818,17 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                           <Cpu size={14} className="text-cyan-500/60" />
                           {t('common.comp_location', 'Component Location')}
                         </div>
-                        <div className="p-5 bg-black/60 rounded-2xl font-mono text-xs text-cyan-400/90 leading-relaxed border border-white/5 shadow-inner">
+                        <div className="p-5 bg-black/60 rounded-2xl font-mono text-xs text-cyan-400/90 leading-relaxed border border-white/5 shadow-inner h-full">
                           {result.technicalDetails.componentLocation}
+                        </div>
+                      </div>
+                      <div className="lg:col-span-2 space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase font-black tracking-wider">
+                          <Terminal size={14} className="text-cyan-500/60" />
+                          {t('common.wiring_summary', 'Wiring & Circuit Summary')}
+                        </div>
+                        <div className="p-5 bg-black/60 rounded-2xl font-mono text-xs text-cyan-400/90 leading-relaxed border border-white/5 shadow-inner h-full">
+                          {result.technicalDetails.wiringDiagramSummary || t('common.no_wiring_data', 'No specific wiring data available for this fault signature.')}
                         </div>
                       </div>
                     </div>
@@ -633,16 +839,131 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
                         {t('common.pinout_checks', 'Pinout & Continuity Checks')}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {result.technicalDetails.pinoutChecks.map((check, i) => (
-                          <div key={i} className="flex items-center gap-3 p-4 bg-white/5 rounded-xl border border-white/5 text-[10px] text-slate-300 hover:bg-cyan-500/5 transition-colors group">
-                            <div className="w-2 h-2 rounded-full bg-cyan-500 group-hover:animate-pulse"></div>
-                            <span className="leading-tight">{check}</span>
-                          </div>
-                        ))}
+                        {result.technicalDetails.pinoutChecks.map((check, i) => {
+                          const isPriority = priorityChecks.includes(i);
+                          return (
+                            <div 
+                              key={i} 
+                              onClick={() => togglePriority(i)}
+                              className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
+                                isPriority 
+                                  ? 'bg-red-500/10 border-red-500/40 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                                  : 'bg-white/5 border-white/5 hover:bg-cyan-500/5 hover:border-cyan-500/30'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className={`w-2 h-2 rounded-full transition-all ${
+                                  isPriority ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'bg-cyan-500 group-hover:animate-pulse'
+                                }`}></div>
+                                <span className={`leading-tight text-[10px] ${isPriority ? 'text-red-200 font-bold' : 'text-slate-300'}`}>{check}</span>
+                              </div>
+                              <Star 
+                                size={12} 
+                                className={`shrink-0 transition-all ${isPriority ? 'text-red-500' : 'text-slate-600 opacity-0 group-hover:opacity-100'}`}
+                                fill={isPriority ? "currentColor" : "none"}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </motion.div>
                 )}
+
+                {/* Repair Protocol & Success Metrics */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Repair Steps */}
+                  <div className="lg:col-span-2 bg-[#0d1117] border border-cyan-500/20 rounded-3xl p-8 space-y-6 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500/40"></div>
+                    <div className="flex items-center gap-3 text-emerald-400 text-sm font-black uppercase tracking-widest">
+                      <Zap size={18} className="text-emerald-500" />
+                      {t('common.repair_protocol', 'Repair Protocol')}
+                    </div>
+                    <div className="space-y-4">
+                      {result.repairSteps?.map((step, i) => (
+                        <div key={i} className="flex items-start gap-4 group">
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-[10px] font-black text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all">
+                              {i + 1}
+                            </div>
+                            {i < (result.repairSteps?.length || 0) - 1 && (
+                              <div className="w-0.5 h-full min-h-[20px] bg-emerald-500/10"></div>
+                            )}
+                          </div>
+                          <p className="text-sm text-slate-300 leading-relaxed pt-0.5">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Success Metrics & Tools */}
+                  <div className="space-y-6">
+                    {/* Metrics Card */}
+                    <div className="bg-[#0d1117] border border-white/5 rounded-3xl p-6 space-y-6">
+                      <div className="flex justify-between items-center">
+                        <div className="space-y-1">
+                          <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.difficulty', 'Difficulty')}</div>
+                          <div className={`text-sm font-black uppercase tracking-tighter ${
+                            result.difficulty === 'EASY' ? 'text-emerald-400' :
+                            result.difficulty === 'MODERATE' ? 'text-yellow-400' :
+                            result.difficulty === 'HARD' ? 'text-orange-400' : 'text-red-500'
+                          }`}>
+                            {result.difficulty}
+                          </div>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">{t('common.success_rate', 'Success Rate')}</div>
+                          <div className="text-sm font-black text-cyan-400 uppercase tracking-tighter">{result.successRate}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-600">
+                          <span>{t('common.fix_probability', 'Fix Probability')}</span>
+                          <span>{result.successRate}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: result.successRate || '50%' }}
+                            className="h-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tools Required */}
+                    <div className="bg-[#0d1117] border border-white/5 rounded-3xl p-6 space-y-4">
+                      <div className="flex items-center gap-2 text-cyan-400/60 text-[10px] font-black uppercase tracking-widest">
+                        <ShoppingCart size={14} />
+                        {t('common.tools_required', 'Required Arsenal')}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {result.toolsRequired?.map((tool, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:border-cyan-500/30 transition-colors">
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Safety Precautions */}
+                    <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-6 space-y-4">
+                      <div className="flex items-center gap-2 text-red-500/60 text-[10px] font-black uppercase tracking-widest">
+                        <ShieldAlert size={14} />
+                        {t('common.safety_precautions', 'Safety Protocols')}
+                      </div>
+                      <ul className="space-y-2">
+                        {result.safetyPrecautions?.map((p, i) => (
+                          <li key={i} className="text-[10px] text-red-200/70 flex items-start gap-2 leading-relaxed">
+                            <span className="text-red-500 mt-1">•</span>
+                            {p}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Detailed Specs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -712,7 +1033,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN }) 
           </AnimatePresence>
 
           {/* Footer Stats */}
-          <div className="flex justify-between items-center pt-12 border-t border-white/5 opacity-20">
+          <div className="flex justify-between items-center pt-12 border-t border-white/5 opacity-20 safe-area-pb">
             <div className="flex gap-8">
               <div className="space-y-1">
                 <div className="text-[8px] uppercase tracking-widest">{t('common.neural_uptime', 'Neural Uptime')}</div>
