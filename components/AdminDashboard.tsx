@@ -28,6 +28,7 @@ import {
   db, 
   collection, 
   getDocs, 
+  getDoc,
   updateDoc, 
   doc, 
   setDoc,
@@ -61,8 +62,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'applications' | 'partners'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'partners' | 'users'>('applications');
   const [partners, setPartners] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
   const [isAddingPartner, setIsAddingPartner] = useState(false);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
@@ -86,7 +88,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   useEffect(() => {
     fetchApplications();
     fetchPartners();
+    fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      const u: any[] = [];
+      snapshot.forEach((doc) => {
+        u.push({ id: doc.id, ...doc.data() });
+      });
+      setUsers(u);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+    }
+  };
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -99,7 +116,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
       setApplications(apps);
     } catch (error) {
-      console.error("Error fetching applications:", error);
+      handleFirestoreError(error, OperationType.LIST, 'partnerApplications');
     } finally {
       setLoading(false);
     }
@@ -115,7 +132,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
       setPartners(p);
     } catch (error) {
-      console.error("Error fetching partners:", error);
+      handleFirestoreError(error, OperationType.LIST, 'partners');
     }
   };
 
@@ -130,7 +147,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       if (app.userId) {
         const userRef = doc(db, 'users', app.userId);
         await updateDoc(userRef, { role: 'partner' })
-          .catch(err => console.error("Error updating user role:", err));
+          .catch(err => handleFirestoreError(err, OperationType.UPDATE, 'users'));
       }
 
       // 3. Create partner entry
@@ -176,7 +193,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       await fetchPartners();
       setEditingPartnerId(null);
     } catch (error) {
-      console.error("Error updating partner:", error);
+      handleFirestoreError(error, OperationType.UPDATE, 'partners');
     }
   };
 
@@ -232,14 +249,60 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
+  const handleRemoveVerifiedUser = async (userId: string) => {
+    try {
+      // 1. Revoke user role
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { role: 'user' });
+
+      // 2. Find their partner applications
+      const q = query(collection(db, 'partnerApplications'), where('userId', '==', userId));
+      const snapshot = await getDocs(q);
+      
+      for (const appDoc of snapshot.docs) {
+        // Reject application
+        await updateDoc(doc(db, 'partnerApplications', appDoc.id), { status: 'rejected' });
+        
+        // Soft delete partner profile
+        const partnerRef = doc(db, 'partners', appDoc.id);
+        await updateDoc(partnerRef, { is_verified: false }).catch(() => {});
+      }
+
+      await fetchUsers();
+      await fetchPartners();
+      await fetchApplications();
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'users');
+    }
+  };
+
   const handleDeletePartner = async (partnerId: string) => {
     try {
+      // 1. Soft delete the partner
       const partnerRef = doc(db, 'partners', partnerId);
-      await updateDoc(partnerRef, { is_verified: false }); // Soft delete
+      await updateDoc(partnerRef, { is_verified: false });
+
+      // 2. Check if there's a corresponding application to revoke the user's role
+      const appRef = doc(db, 'partnerApplications', partnerId);
+      const appSnap = await getDoc(appRef);
+      
+      if (appSnap.exists()) {
+        const appData = appSnap.data();
+        
+        // Update application status
+        await updateDoc(appRef, { status: 'rejected' });
+        
+        // Revoke user role if userId exists
+        if (appData.userId) {
+          const userRef = doc(db, 'users', appData.userId);
+          await updateDoc(userRef, { role: 'user' });
+        }
+      }
+
       await fetchPartners();
       setConfirmDeleteId(null);
     } catch (error) {
-      console.error("Error deleting partner:", error);
+      handleFirestoreError(error, OperationType.UPDATE, 'partners');
     }
   };
 
@@ -250,23 +313,49 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       await updateDoc(appRef, { status: 'rejected' });
       await fetchApplications();
     } catch (error) {
-      console.error("Error rejecting application:", error);
+      handleFirestoreError(error, OperationType.UPDATE, 'partnerApplications');
     } finally {
       setProcessingId(null);
     }
   };
 
   const sendApprovalEmail = async (app: any) => {
-    console.log(`Sending approval email to ${app.email}...`);
-    // Visual feedback for simulation
-    const notification = document.createElement('div');
-    notification.className = 'fixed top-4 right-4 z-[300] bg-emerald-500 text-black px-6 py-4 rounded-2xl shadow-2xl font-black uppercase tracking-widest flex items-center gap-3 animate-bounce';
-    notification.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-      Email Sent to ${app.email}
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 5000);
+    console.log(`Sending approval notification to ${app.email} and ${app.phone}...`);
+    
+    try {
+      const response = await fetch('/api/notify/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: app.email,
+          phone: app.phone,
+          companyName: app.companyName
+        })
+      });
+
+      const results = await response.json();
+      
+      // Visual feedback for simulation
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 z-[300] bg-emerald-500 text-black px-6 py-4 rounded-2xl shadow-2xl font-black uppercase tracking-widest flex flex-col gap-1 animate-bounce';
+      
+      let statusText = '';
+      if (results.email?.success) statusText += '📧 Email Sent ';
+      if (results.sms?.success) statusText += '📱 SMS Sent';
+      if (!results.email?.success && !results.sms?.success) statusText = '❌ Notification Failed';
+
+      notification.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+          ${statusText}
+        </div>
+        <div class="text-[8px] opacity-70">To: ${app.email}</div>
+      `;
+      document.body.appendChild(notification);
+      setTimeout(() => notification.remove(), 5000);
+    } catch (error) {
+      console.error("Error sending notifications:", error);
+    }
   };
 
   const filteredApps = applications.filter(app => 
@@ -312,6 +401,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               }`}
             >
               Active Partners
+            </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                activeTab === 'users' ? 'bg-cyan-500 text-black' : 'text-slate-500 hover:text-white'
+              }`}
+            >
+              All Users
             </button>
           </div>
           
@@ -457,7 +554,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               </AnimatePresence>
             </div>
           )
-        ) : (
+        ) : activeTab === 'partners' ? (
           <div className="space-y-6">
             {isAddingPartner && (
               <motion.div
@@ -658,7 +755,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   {confirmDeleteId === partner.id && (
                     <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl animate-in zoom-in-95 duration-200">
                       <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-3 text-center">
-                        Confirm Soft Delete? (Sets is_verified to false)
+                        Confirm Remove? (Revokes partner role & hides profile)
                       </p>
                       <div className="flex gap-2">
                         <button 
@@ -829,6 +926,57 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       )}
                     </div>
                   )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {users.map((u) => (
+                <motion.div
+                  key={u.id}
+                  layout
+                  className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 hover:border-cyan-500/30 transition-all group"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-cyan-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20 overflow-hidden">
+                        {u.photoURL ? (
+                          <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <User className="text-cyan-400" size={20} />
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-black text-white uppercase tracking-tight">{u.displayName || 'No Name'}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
+                            {u.role}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    {u.role === 'partner' && (
+                      <button
+                        onClick={() => handleRemoveVerifiedUser(u.id)}
+                        className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
+                        title="Remove Partner Role"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-300">
+                      <Mail size={10} className="text-cyan-500/50" />
+                      {u.email}
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-slate-300">
+                      <Clock size={10} className="text-cyan-500/50" />
+                      Joined: {u.createdAt?.toDate ? new Date(u.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
+                    </div>
+                  </div>
                 </motion.div>
               ))}
             </div>

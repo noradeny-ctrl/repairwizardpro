@@ -293,8 +293,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
             timestamp: Timestamp.now()
           });
         } catch (fsErr) {
-          console.error("Failed to save scan to Firestore:", fsErr);
-          // We don't throw here to not interrupt the user experience
+          handleFirestoreError(fsErr, OperationType.CREATE, 'scans');
         }
       }
     } catch (err: any) {

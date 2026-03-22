@@ -30,6 +30,7 @@ service cloud.firestore {
     // Collection: /partnerApplications/{applicationId}
     // Document ID: Auto-generated
     // Fields:
+    //   - userId: string (required, immutable) - User who submitted the application
     //   - companyName: string (required, max 100 chars)
     //   - businessType: string (required, enum: ['auction', 'logistics', 'technical', 'oem'])
     //   - fullName: string (required, max 100 chars)
@@ -100,9 +101,9 @@ service cloud.firestore {
     // Domain Validators
     // ===============================================================
 
-    function isValidUser(data) {
+    function isValidUser(data, userId) {
       return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt']) &&
-             data.uid == request.auth.uid &&
+             data.uid == userId &&
              isValidEmail(data.email) &&
              (data.role in ['user', 'admin', 'partner']) &&
              data.createdAt is timestamp;
@@ -120,7 +121,8 @@ service cloud.firestore {
     }
 
     function isValidPartnerApp(data) {
-      return hasOnlyAllowedFields(['companyName', 'businessType', 'fullName', 'email', 'phone', 'status', 'submittedAt']) &&
+      return hasOnlyAllowedFields(['userId', 'companyName', 'businessType', 'fullName', 'email', 'phone', 'status', 'submittedAt']) &&
+             data.userId == request.auth.uid &&
              data.companyName is string && data.companyName.size() < 100 &&
              (data.businessType in ['auction', 'logistics', 'technical', 'oem']) &&
              data.fullName is string && data.fullName.size() < 100 &&
@@ -146,8 +148,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
-      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data, userId) && request.resource.data.role == 'user') || (isAdmin() && isValidUser(request.resource.data, userId));
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data, userId) && request.resource.data.role == resource.data.role) || (isAdmin() && isValidUser(request.resource.data, userId));
+      allow delete: if isAdmin();
     }
 
     match /scans/{scanId} {
@@ -158,8 +161,8 @@ service cloud.firestore {
     }
 
     match /partnerApplications/{applicationId} {
-      allow read: if isAdmin();
-      allow create: if hasRequiredFields(['companyName', 'businessType', 'fullName', 'email', 'phone', 'status', 'submittedAt']) && request.resource.data.status == 'pending';
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidPartnerApp(request.resource.data) && request.resource.data.status == 'pending';
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }

@@ -41,7 +41,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
         const repairsSnapshot = await getDocs(repairsQuery);
         setRepairs(repairsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
-        console.error("Error fetching partner history:", error);
+        handleFirestoreError(error, OperationType.LIST, 'scans/repairs');
       } finally {
         setLoading(false);
       }

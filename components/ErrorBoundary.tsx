@@ -20,6 +20,28 @@ export class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
+  public componentDidMount() {
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.addEventListener('error', this.handleWindowError);
+  }
+
+  public componentWillUnmount() {
+    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.removeEventListener('error', this.handleWindowError);
+  }
+
+  private handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    if (event.reason instanceof Error) {
+      this.setState({ hasError: true, error: event.reason });
+    } else {
+      this.setState({ hasError: true, error: new Error(String(event.reason)) });
+    }
+  };
+
+  private handleWindowError = (event: ErrorEvent) => {
+    this.setState({ hasError: true, error: event.error });
+  };
+
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
   }

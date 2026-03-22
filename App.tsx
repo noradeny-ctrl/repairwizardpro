@@ -16,13 +16,14 @@ import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PartnerDashboard } from './components/PartnerDashboard';
+import { SettingsModal } from './components/SettingsModal';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import { AuthModal } from './components/AuthModal';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
-import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { useFirebase } from './components/FirebaseProvider';
-import { LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, Settings } from 'lucide-react';
 
 const KurdishFlag = memo(({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
@@ -164,6 +165,7 @@ const App: React.FC = () => {
   const [obdInput, setObdInput] = useState('');
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -171,7 +173,7 @@ const App: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1500));
       try {
         const docRef = doc(db, 'test', 'connection');
-        await getDoc(docRef);
+        await getDocFromServer(docRef);
         console.log("✅ Firestore connection verified.");
       } catch (err: any) {
         if (retries > 0) {
@@ -572,18 +574,32 @@ const App: React.FC = () => {
                         alt="Profile" 
                         className="w-10 h-10 rounded-xl border border-white/10 group-hover:border-cyan-500/50 transition-all cursor-pointer"
                         referrerPolicy="no-referrer"
+                        onClick={() => setIsSettingsModalOpen(true)}
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center group-hover:border-cyan-500/50 transition-all cursor-pointer">
+                      <div 
+                        className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center group-hover:border-cyan-500/50 transition-all cursor-pointer"
+                        onClick={() => setIsSettingsModalOpen(true)}
+                      >
                         <UserIcon size={20} className="text-slate-500" />
                       </div>
                     )}
-                    <button 
-                      onClick={handleLogout}
-                      className="absolute -bottom-1 -right-1 p-1.5 bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                    >
-                      <LogOut size={10} />
-                    </button>
+                    <div className="absolute -bottom-1 -right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button 
+                        onClick={() => setIsSettingsModalOpen(true)}
+                        className="p-1.5 bg-cyan-500 rounded-lg text-black hover:scale-110 transition-transform"
+                        title="Settings"
+                      >
+                        <Settings size={10} />
+                      </button>
+                      <button 
+                        onClick={handleLogout}
+                        className="p-1.5 bg-red-500 rounded-lg text-white hover:scale-110 transition-transform"
+                        title="Logout"
+                      >
+                        <LogOut size={10} />
+                      </button>
+                    </div>
                   </div>
               </div>
             ) : (
@@ -649,6 +665,13 @@ const App: React.FC = () => {
         {isPartnerDashboardOpen && (
           <PartnerDashboard 
             onClose={() => setIsPartnerDashboardOpen(false)} 
+          />
+        )}
+
+        {isSettingsModalOpen && (
+          <SettingsModal 
+            isOpen={isSettingsModalOpen}
+            onClose={() => setIsSettingsModalOpen(false)} 
           />
         )}
 

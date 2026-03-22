@@ -56,9 +56,7 @@ export const BecomePartnerModal: React.FC<BecomePartnerModalProps> = ({ isOpen, 
       await setDoc(applicationRef, applicationData);
       setSubmitted(true);
     } catch (err: any) {
-      console.error("Partner Application Error:", err);
-      setError(t('common.submission_error', 'Failed to submit application. Please try again.'));
-      // We don't re-throw here to avoid unhandled rejections in the UI
+      handleFirestoreError(err, OperationType.CREATE, 'partnerApplications');
     } finally {
       setIsSubmitting(false);
     }

@@ -38,7 +38,7 @@ export async function fetchActivePartners(): Promise<Partner[]> {
 
     snapshot.forEach((doc) => {
       const data = doc.data() as any;
-      if (!data.subscription_end_date || data.subscription_end_date >= today) {
+      if (data.is_verified !== false && (!data.subscription_end_date || data.subscription_end_date >= today)) {
         livePartners.push({
           id: doc.id,
           business_name: data.business_name,

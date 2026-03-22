@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, Timestamp, FirebaseUser, signInWithPopup, signOut, googleProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from '../firebase';
+import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, updateDoc, Timestamp, FirebaseUser, signInWithPopup, signOut, googleProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail, handleFirestoreError, OperationType } from '../firebase';
 
 interface FirebaseContextType {
   user: FirebaseUser | null;
@@ -9,6 +9,8 @@ interface FirebaseContextType {
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUserProfile: (data: { displayName?: string; photoURL?: string }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -20,6 +22,8 @@ const FirebaseContext = createContext<FirebaseContextType>({
   login: async () => {},
   loginWithEmail: async () => {},
   registerWithEmail: async () => {},
+  resetPassword: async () => {},
+  updateUserProfile: async () => {},
   logout: async () => {},
 });
 
@@ -67,7 +71,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         role: userCredential.user.email === 'noradeny@gmail.com' ? 'admin' : 'user',
         createdAt: Timestamp.now(),
       };
-      await setDoc(userDocRef, newProfile);
+      await setDoc(userDocRef, newProfile).catch(err => handleFirestoreError(err, OperationType.CREATE, 'users'));
       setUserProfile(newProfile);
       setIsAdmin(newProfile.role === 'admin');
     } catch (error: any) {
@@ -76,6 +80,35 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         throw new Error("This email is already registered. Please login instead.");
       }
       throw error;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+      console.error("Password reset failed:", error);
+      if (error.code === 'auth/user-not-found') {
+        throw new Error("No user found with this email address.");
+      }
+      throw error;
+    }
+  };
+
+  const updateUserProfile = async (data: { displayName?: string; photoURL?: string }) => {
+    if (!user) return;
+    try {
+      // Update Auth profile
+      await updateProfile(user, data);
+      
+      // Update Firestore profile
+      const userDocRef = doc(db, 'users', user.uid);
+      await updateDoc(userDocRef, data);
+      
+      // Update local state
+      setUserProfile((prev: any) => ({ ...prev, ...data }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'users');
     }
   };
 
@@ -117,7 +150,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setIsAdmin(newProfile.role === 'admin');
           }
         } catch (error) {
-          console.error("Error fetching user profile:", error);
+          handleFirestoreError(error, OperationType.GET, 'users');
         }
       } else {
         setUserProfile(null);
@@ -131,7 +164,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ user, userProfile, loading, isAdmin, login, loginWithEmail, registerWithEmail, logout }}>
+    <FirebaseContext.Provider value={{ user, userProfile, loading, isAdmin, login, loginWithEmail, registerWithEmail, resetPassword, updateUserProfile, logout }}>
       {children}
     </FirebaseContext.Provider>
   );
