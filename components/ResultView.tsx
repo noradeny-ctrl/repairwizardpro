@@ -117,7 +117,7 @@ const ResultView: React.FC<ResultViewProps> = ({
         </button>
       </div>
 
-      <div className="flex-1 p-6 space-y-10 ios-scroll pb-48 hide-scrollbar">
+      <div className="flex-1 p-6 space-y-10 ios-scroll pb-48 hide-scrollbar min-h-0">
         {result.resultType === 'VIN_SCAN' && result.vinScanData && (
           <section className="animate-slide-up">
             <div className="bg-gradient-to-br from-slate-900 to-slate-800 border border-cyan-500/30 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">

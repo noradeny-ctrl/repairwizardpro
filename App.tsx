@@ -2,7 +2,7 @@
 // Main Application Component
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X } from 'lucide-react';
+import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -13,6 +13,7 @@ import WizardIcon from './components/WizardIcon';
 import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
+import { AdminDashboard } from './components/AdminDashboard';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
@@ -142,6 +143,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 const App: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user, userProfile, loading } = useFirebase();
+  const isAdmin = userProfile?.role === 'admin';
   const [state, setState] = useState<AppState>({
     userInput: '',
     mode: RegionMode.WESTERN,
@@ -157,6 +159,7 @@ const App: React.FC = () => {
   const [showOBD, setShowOBD] = useState(false);
   const [detectedOBD, setDetectedOBD] = useState<string | null>(null);
   const [obdInput, setObdInput] = useState('');
+  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -288,6 +291,8 @@ const App: React.FC = () => {
   };
 
   const isRTL = state.mode !== RegionMode.WESTERN;
+
+  const hasImage = !!state.selectedImage;
 
   const isValidVin = useMemo(() => {
     return /^[A-HJ-NPR-Z0-9]{17}$/i.test(state.userInput.trim());
@@ -477,22 +482,7 @@ const App: React.FC = () => {
       <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
         <SunBackground />
         
-        {/* Global B2B Utility Bar at the Very Top */}
-        <div className="w-full bg-emerald-500/5 border-b border-emerald-500/10 backdrop-blur-md z-[60] safe-area-pt">
-          <button 
-            onClick={() => setIsExportTerminalOpen(true)}
-            className="w-full py-4 flex items-center justify-center gap-4 hover:bg-emerald-500/10 transition-all group"
-          >
-            <div className="flex items-center gap-2">
-              <Ship className="text-emerald-400 group-hover:scale-110 transition-transform" size={14} />
-              <span className="text-[9px] font-black tracking-[0.4em] text-emerald-400/80 uppercase">{t('common.b2b_terminal', 'B2B Terminal')}</span>
-            </div>
-            <div className="h-[1px] w-8 bg-emerald-500/20"></div>
-            <span className="text-[8px] font-bold text-emerald-500/40 uppercase tracking-widest">{t('terminal.system_online', 'System Online')}</span>
-          </button>
-        </div>
-
-        <header className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50">
+        <header className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50 safe-area-pt">
           <div 
             className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
             onClick={() => setState(prev => ({...prev, isStarted: false}))}
@@ -500,7 +490,7 @@ const App: React.FC = () => {
             <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
             <Globe className="w-5 h-5 text-cyan-400" />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
             ) : user ? (
@@ -537,9 +527,31 @@ const App: React.FC = () => {
                 <span className="hidden sm:inline">Login</span>
               </button>
             )}
-            <div className="px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
+            
+            <button 
+              onClick={() => setIsExportTerminalOpen(true)}
+              className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-emerald-500/20 group"
+              title={t('common.b2b_terminal', 'B2B Terminal')}
+            >
+              <Ship size={14} className="group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{t('common.b2b_terminal', 'B2B Terminal')}</span>
+            </button>
+
+            {isAdmin && (
+              <button 
+                onClick={() => setIsAdminDashboardOpen(true)}
+                className="px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-cyan-500/20 group"
+                title="Admin Panel"
+              >
+                <ShieldCheck size={14} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Admin</span>
+              </button>
+            )}
+
+            <div className="hidden sm:block px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
+            
             <button 
               onClick={() => setShowOBD(prev => !prev)}
               className={`px-3 py-1.5 border rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showOBD ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-slate-800/80 border-white/10 text-slate-400 hover:text-cyan-400'}`}
@@ -557,8 +569,14 @@ const App: React.FC = () => {
           />
         )}
 
+        {isAdminDashboardOpen && (
+          <AdminDashboard 
+            onClose={() => setIsAdminDashboardOpen(false)} 
+          />
+        )}
+
         {showOBD ? (
-          <main className="flex-1 ios-scroll hide-scrollbar relative z-10 p-6">
+          <main className="flex-1 ios-scroll hide-scrollbar relative z-10 p-6 min-h-0">
             <div className="max-w-4xl mx-auto">
               <button 
                 onClick={() => setShowOBD(false)}
@@ -568,11 +586,12 @@ const App: React.FC = () => {
                 {t('common.back_to_dashboard', 'Back to Dashboard')}
               </button>
               <OBDAnalyzer mode={state.mode} initialCode={detectedOBD || ''} />
+              <div className="h-40" />
             </div>
           </main>
         ) : (
-          <main className="flex-1 ios-scroll p-6 space-y-6 hide-scrollbar relative z-10">
-            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : (detectedOBD && !obdInput ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5')}`}>
+          <main className="flex-1 ios-scroll p-6 space-y-6 hide-scrollbar relative z-10 min-h-0">
+            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : (hasImage ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]' : (detectedOBD && !obdInput ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5'))}`}>
             <div className="relative">
               <textarea 
                 className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium relative z-10" 
@@ -644,19 +663,40 @@ const App: React.FC = () => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="relative w-32 h-32 mb-4 group"
+                  className="relative mb-6 group"
                 >
-                  <img 
-                    src={`data:image/jpeg;base64,${state.selectedImage}`} 
-                    alt="Selected" 
-                    className="w-full h-full object-cover rounded-2xl border-2 border-cyan-500/50"
-                  />
-                  <button 
-                    onClick={removeImage}
-                    className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
+                  <div className="flex items-start gap-4">
+                    <div className="relative w-32 h-32 shrink-0">
+                      <img 
+                        src={`data:image/jpeg;base64,${state.selectedImage}`} 
+                        alt="Selected" 
+                        className="w-full h-full object-cover rounded-2xl border-2 border-emerald-500/50"
+                      />
+                      <button 
+                        onClick={removeImage}
+                        className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <div className="flex-1 pt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                          {t('common.visual_data_ready', 'VISUAL DATA READY')}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed mb-3">
+                        {t('common.visual_analysis_desc', 'THE WIZARD WILL ANALYZE THIS IMAGE FOR DAMAGE, PARTS, OR WARNING LIGHTS.')}
+                      </p>
+                      <button 
+                        onClick={startAnalysis}
+                        className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                      >
+                        {t('common.analyze_photo', 'ANALYZE PHOTO')}
+                      </button>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -758,7 +798,7 @@ const App: React.FC = () => {
           </div>
           
           <div className="mt-8">
-            <VerifiedPartnersGrid />
+            <VerifiedPartnersGrid livePartners={livePartners} />
           </div>
 
           <div className="h-40" />

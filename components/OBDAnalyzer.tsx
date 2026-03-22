@@ -15,9 +15,11 @@ interface OBDCodeData {
   threatLevel: ThreatLevel;
   threatDescription: string;
   partName: string;
+  partNumber?: string;
   symptoms: string[];
   commonCauses: string[];
   estimatedCost: string;
+  estimatedLaborTime?: string;
   proTip?: string;
   groundingSources?: { title: string; uri: string }[];
   repairSteps?: string[];
@@ -60,10 +62,12 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
   const [isDeepScanning, setIsDeepScanning] = useState(false);
   const [logIndex, setLogIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
+  const [lastSearchWasDeep, setLastSearchWasDeep] = useState(false);
   const [recentScans, setRecentScans] = useState<OBDCodeData[]>([]);
   const [priorityChecks, setPriorityChecks] = useState<number[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const recentScansRef = useRef<HTMLDivElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
   // Auto-trigger search if initialCode is provided
@@ -167,6 +171,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
   const handleSearch = useCallback(async (deep = false) => {
     if (!input.trim() && !selectedImage) return;
     
+    setLastSearchWasDeep(deep);
     if (deep) setIsDeepScanning(true);
     else setIsSearching(true);
     
@@ -231,9 +236,11 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
               threatLevel: { type: Type.STRING, enum: ["STABLE", "WARNING", "CRITICAL"] },
               threatDescription: { type: Type.STRING, description: "A clear explanation of the danger level in simple terms. NO JARGON." },
               partName: { type: Type.STRING },
+              partNumber: { type: Type.STRING, description: "The specific manufacturer or aftermarket part number if available." },
               symptoms: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of symptoms in plain language." },
               commonCauses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of common causes in plain language." },
-              estimatedCost: { type: Type.STRING },
+              estimatedCost: { type: Type.STRING, description: "Total estimated cost including parts and labor." },
+              estimatedLaborTime: { type: Type.STRING, description: "Estimated time to complete the repair (e.g., '1.5 - 2 hours')." },
               proTip: { type: Type.STRING, description: "A specific, actionable tip for the car owner." },
               repairSteps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Step-by-step repair instructions." },
               toolsRequired: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of tools needed for the repair." },
@@ -250,7 +257,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                 }
               }
             },
-            required: ["code", "translation", "threatLevel", "threatDescription", "partName", "symptoms", "commonCauses", "estimatedCost", "proTip", "repairSteps", "toolsRequired", "difficulty", "successRate", "safetyPrecautions"]
+            required: ["code", "translation", "threatLevel", "threatDescription", "partName", "symptoms", "commonCauses", "estimatedCost", "proTip", "repairSteps", "toolsRequired", "difficulty", "successRate", "safetyPrecautions", "partNumber", "estimatedLaborTime"]
           }
         }
       });
@@ -294,21 +301,29 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
       console.error("OBD Analysis failed:", err);
       
       let errorMessage = t('common.neural_link_interrupted', "NEURAL LINK INTERRUPTED: UNABLE TO DECODE SIGNATURE.");
+      let friendlyHint = t('common.error_hint_generic', "The connection was lost. Please check your internet and try again.");
       
       const errorStr = String(err).toLowerCase();
-      if (errorStr.includes("quota") || errorStr.includes("429")) {
+      const isQuotaError = errorStr.includes("quota") || errorStr.includes("429");
+      
+      if (isQuotaError) {
         errorMessage = t('common.neural_link_saturated', "NEURAL LINK SATURATED: PROCESSING QUOTA EXCEEDED. PLEASE STAND BY.");
+        friendlyHint = t('common.error_hint_quota', "The system is currently busy. Please wait a moment before retrying, or contact support if the issue persists. You can also view your recent scans below for cached data.");
       } else if (errorStr.includes("safety") || errorStr.includes("blocked")) {
         errorMessage = t('common.neural_link_blocked', "NEURAL LINK BLOCKED: SAFETY PROTOCOLS TRIGGERED BY INPUT SIGNATURE.");
+        friendlyHint = t('common.error_hint_safety', "The input contains content that cannot be processed. Please rephrase your description.");
       } else if (errorStr.includes("network") || errorStr.includes("fetch")) {
         errorMessage = t('common.neural_link_unstable', "NEURAL LINK UNSTABLE: CONNECTION TIMEOUT DETECTED.");
+        friendlyHint = t('common.error_hint_network', "Check your internet connection and try the scan again.");
       } else if (errorStr.includes("api key") || errorStr.includes("key not found")) {
         errorMessage = t('common.neural_link_rejected', "NEURAL LINK REJECTED: INVALID AUTHENTICATION SIGNATURE.");
+        friendlyHint = t('common.error_hint_auth', "There is an issue with the API key. Please check your settings.");
       } else if (errorStr.includes("json")) {
         errorMessage = t('common.neural_link_corrupted', "NEURAL LINK CORRUPTED: RECEIVED MALFORMED DATA STREAM.");
+        friendlyHint = t('common.error_hint_data', "The response was corrupted. Retrying the scan might fix this.");
       }
 
-      setError(errorMessage);
+      setError(`${errorMessage}\n\n${friendlyHint}`);
     } finally {
       setIsSearching(false);
       setIsDeepScanning(false);
@@ -322,7 +337,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
 
 
   return (
-    <div className="w-full bg-[#010409] text-white font-orbitron p-6 flex flex-col items-center justify-start relative">
+    <div className="w-full bg-[#010409] text-white font-orbitron flex flex-col items-center justify-start relative">
       {/* Neural Pulse Background */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-cyan-500/5 rounded-full blur-[120px] animate-neural-pulse pointer-events-none"></div>
       
@@ -420,7 +435,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
 
           {/* Search Input */}
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl blur opacity-20 group-focus-within:opacity-40 transition duration-500"></div>
+            {/* Enhanced Neural Glow Background */}
+            <div className="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 via-blue-500 to-cyan-400 rounded-[2rem] blur-xl opacity-20 group-focus-within:opacity-50 transition duration-700 animate-pulse"></div>
             
             {/* Image Preview */}
             <AnimatePresence>
@@ -431,34 +447,39 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                   exit={{ opacity: 0, scale: 0.9, y: 10 }}
                   className="absolute -top-32 left-0 z-20"
                 >
-                  <div className="relative w-24 h-24 group">
+                  <div className="relative w-28 h-28 group">
                     <img 
                       src={`data:image/jpeg;base64,${selectedImage}`} 
                       alt="Selected" 
-                      className="w-full h-full object-cover rounded-2xl border-2 border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                      className="w-full h-full object-cover rounded-3xl border-2 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.4)]"
                     />
                     <button 
                       onClick={removeImage}
-                      className="absolute -top-2 -right-2 p-1.5 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors border border-white/20"
+                      className="absolute -top-2 -right-2 p-2 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors border border-white/20"
                     >
-                      <X size={12} />
+                      <X size={14} />
                     </button>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <div className="relative flex items-center bg-[#0d1117] border border-cyan-500/30 rounded-2xl p-2 shadow-2xl">
-              <Search className="ml-4 text-cyan-400/50" size={20} />
-              <input 
-                type="text" 
-                placeholder={t('common.obd_placeholder', "DESCRIBE PROBLEM OR ENTER CODE (e.g., 'car shaking')")}
-                className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-cyan-900/50 px-4 py-4 text-lg font-bold tracking-widest uppercase"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <div className="flex items-center gap-2 pr-2">
+            <div className="relative flex flex-col md:flex-row items-stretch md:items-center bg-[#0d1117]/90 backdrop-blur-xl border-2 border-cyan-500/40 rounded-[2rem] p-2 shadow-[0_0_50px_rgba(0,0,0,0.8)] group-focus-within:border-cyan-400 transition-all duration-500">
+              <div className="flex-1 flex items-center min-w-0">
+                <div className="ml-6 p-2 bg-cyan-500/10 rounded-xl text-cyan-400">
+                  <Search size={24} className="group-focus-within:scale-110 transition-transform" />
+                </div>
+                <input 
+                  type="text" 
+                  placeholder={t('common.obd_placeholder', "DESCRIBE PROBLEM OR ENTER CODE...")}
+                  className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-cyan-900/40 px-6 py-6 text-xl font-black tracking-widest uppercase"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                />
+              </div>
+              
+              <div className="flex items-center gap-2 p-2 bg-black/40 md:bg-transparent rounded-[1.5rem] mt-2 md:mt-0">
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -468,25 +489,54 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                 />
                 <label 
                   htmlFor="obd-image-upload"
-                  className="p-5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-cyan-400 cursor-pointer transition-all active:scale-95 flex items-center justify-center"
+                  className="p-5 bg-white/5 hover:bg-cyan-500/20 border border-white/10 rounded-2xl text-cyan-400 cursor-pointer transition-all active:scale-95 flex items-center justify-center group/cam"
                   title={t('common.add_photo', 'Add Photo')}
                 >
-                  <Camera size={20} />
+                  <Camera size={24} className="group-hover/cam:rotate-12 transition-transform" />
                 </label>
+                
                 <button 
                   onClick={handleClear}
-                  className="px-5 py-5 text-[10px] font-black text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors border border-white/5 rounded-xl bg-white/5 whitespace-nowrap"
+                  className="px-6 py-5 text-[10px] font-black text-slate-500 hover:text-red-400 uppercase tracking-widest transition-colors border border-white/5 rounded-2xl bg-white/5 whitespace-nowrap hidden sm:block"
                 >
-                  {t('common.clear_all', 'Clear All')}
+                  {t('common.clear_all', 'Clear')}
                 </button>
+                
                 <button 
                   onClick={() => handleSearch()}
                   disabled={isSearching || isDeepScanning || (!input.trim() && !selectedImage)}
-                  className="bg-cyan-500 hover:bg-cyan-400 text-black font-black px-10 py-5 rounded-xl transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
+                  className="flex-1 md:flex-none bg-cyan-500 hover:bg-cyan-400 text-black font-black px-8 py-5 rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 whitespace-nowrap shadow-[0_0_20px_rgba(6,182,212,0.4)]"
                 >
-                  {isSearching ? <Activity className="animate-spin" size={18} /> : t('common.decode', 'DECODE')}
+                  {isSearching ? (
+                    <Activity className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Zap size={20} fill="currentColor" />
+                      <span className="tracking-tighter">{t('common.decode', 'DECODE')}</span>
+                    </>
+                  )}
+                </button>
+
+                <button 
+                  onClick={() => handleSearch(true)}
+                  disabled={isSearching || isDeepScanning || (!input.trim() && !selectedImage)}
+                  className="flex-1 md:flex-none bg-emerald-500 hover:bg-emerald-400 text-black font-black px-8 py-5 rounded-2xl transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3 whitespace-nowrap shadow-[0_0_20px_rgba(16,185,129,0.4)]"
+                >
+                  {isDeepScanning ? (
+                    <Activity className="animate-spin" size={20} />
+                  ) : (
+                    <>
+                      <Search size={20} />
+                      <span className="tracking-tighter">{t('common.deep_scan', 'DEEP SCAN')}</span>
+                    </>
+                  )}
                 </button>
               </div>
+            </div>
+            
+            {/* Neural Signature Label */}
+            <div className="absolute -bottom-3 left-10 px-4 py-1 bg-cyan-500 text-black text-[8px] font-black uppercase tracking-[0.3em] rounded-full shadow-lg z-20">
+              {t('common.neural_signature_input', 'Neural Signature Input')}
             </div>
           </div>
 
@@ -507,15 +557,46 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                   <Terminal size={12} />
                   <span className="uppercase tracking-widest">{t('common.neural_scan_log', 'Neural Scan Log')}</span>
                 </div>
-                <div className="space-y-1 max-h-32 overflow-y-auto hide-scrollbar">
-                  {localizedLogs.slice(0, logIndex + 1).map((msg, i) => (
-                    <div key={i} className="flex items-center gap-2 animate-fade-in">
-                      <span className="text-cyan-500/30">[{new Date().toLocaleTimeString()}]</span>
-                      <span className={i === logIndex ? "text-cyan-400" : ""}>{msg}</span>
-                      {i === logIndex && <span className="w-1 h-3 bg-cyan-400 animate-pulse"></span>}
-                    </div>
-                  ))}
-                  <div ref={logEndRef} />
+                <div className="space-y-2 max-h-48 overflow-y-auto hide-scrollbar scroll-smooth pr-2">
+                  {localizedLogs.slice(0, logIndex + 1).map((msg, i) => {
+                    const isActive = i === logIndex;
+                    return (
+                      <motion.div 
+                        key={i} 
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={`flex items-start gap-3 p-2 rounded-lg transition-all duration-300 ${
+                          isActive 
+                            ? "bg-cyan-500/10 border-l-2 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]" 
+                            : "opacity-40"
+                        }`}
+                      >
+                        <span className={`text-[8px] mt-0.5 font-bold ${isActive ? "text-cyan-400" : "text-cyan-500/30"}`}>
+                          [{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]
+                        </span>
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className={`${isActive ? "text-cyan-300 font-bold" : "text-cyan-500/60"}`}>
+                            {msg}
+                          </span>
+                          {isActive && (
+                            <motion.span 
+                              animate={{ opacity: [1, 0] }}
+                              transition={{ repeat: Infinity, duration: 0.8 }}
+                              className="w-1.5 h-3.5 bg-cyan-400 inline-block"
+                            />
+                          )}
+                        </div>
+                        {isActive && (
+                          <div className="flex gap-1">
+                            <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse"></div>
+                            <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse delay-75"></div>
+                            <div className="w-1 h-1 bg-cyan-400 rounded-full animate-pulse delay-150"></div>
+                          </div>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                  <div ref={logEndRef} className="h-2" />
                 </div>
               </motion.div>
             )}
@@ -537,14 +618,48 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                   </div>
                   <div className="space-y-1">
                     <div className="text-xs font-black uppercase tracking-[0.3em]">{t('common.neural_link_status', 'Neural Link Status')}: {t('common.critical', 'Critical')}</div>
-                    <div className="text-sm font-bold tracking-widest uppercase">{error}</div>
+                    <div className="text-sm font-bold tracking-widest uppercase whitespace-pre-line">{error}</div>
                   </div>
-                  <button 
-                    onClick={() => setError(null)}
-                    className="mt-2 text-[10px] font-black text-red-500/60 hover:text-red-500 uppercase tracking-widest transition-colors"
-                  >
-                    {t('common.dismiss_alert', '[ Dismiss Alert ]')}
-                  </button>
+                  
+                  <div className="flex flex-col sm:flex-row items-center gap-4 mt-2">
+                    <button 
+                      onClick={() => handleSearch(lastSearchWasDeep)}
+                      className="px-6 py-2 bg-red-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-400 transition-colors flex items-center gap-2"
+                    >
+                      <Zap size={12} fill="currentColor" />
+                      {t('common.retry_scan', 'RETRY SCAN')}
+                    </button>
+
+                    {error.toLowerCase().includes('quota') && (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button 
+                          onClick={() => {
+                            recentScansRef.current?.scrollIntoView({ behavior: 'smooth' });
+                            setError(null);
+                          }}
+                          className="px-6 py-2 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-cyan-500/30 transition-colors flex items-center gap-2"
+                        >
+                          <History size={12} />
+                          {t('common.view_recent_scans', 'VIEW RECENT SCANS')}
+                        </button>
+                        
+                        <a 
+                          href="mailto:support@repairwizard.net"
+                          className="px-6 py-2 bg-white/5 text-white/60 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white/10 transition-colors flex items-center gap-2"
+                        >
+                          <Info size={12} />
+                          {t('common.contact_support', 'CONTACT SUPPORT')}
+                        </a>
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={() => setError(null)}
+                      className="text-[10px] font-black text-red-500/60 hover:text-red-500 uppercase tracking-widest transition-colors"
+                    >
+                      {t('common.dismiss_alert', '[ Dismiss Alert ]')}
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -637,7 +752,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5">
+                      <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-white/5">
                         <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">{t('common.identified_part', 'Identified Part')}:</span>
                         <a 
                           href={getAmazonLink(result.partName)}
@@ -648,6 +763,11 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                           {result.partName}
                           <ShoppingCart size={10} className="group-hover/link:scale-110 transition-transform" />
                         </a>
+                        {result.partNumber && (
+                          <span className="text-[8px] font-mono text-slate-500 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                            #{result.partNumber}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end gap-1">
@@ -999,9 +1119,17 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
 
                 {/* Cost & Actions */}
                 <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="space-y-1 text-center md:text-left">
-                    <span className="text-[10px] font-black text-cyan-400/40 uppercase tracking-widest">{t('common.est_repair_cost', 'Estimated Repair Cost')}</span>
-                    <div className="text-4xl font-black text-white">{result.estimatedCost}</div>
+                  <div className="flex flex-col md:flex-row gap-8 items-center md:items-start">
+                    <div className="space-y-1 text-center md:text-left">
+                      <span className="text-[10px] font-black text-cyan-400/40 uppercase tracking-widest">{t('common.est_repair_cost', 'Estimated Repair Cost')}</span>
+                      <div className="text-4xl font-black text-white">{result.estimatedCost}</div>
+                    </div>
+                    {result.estimatedLaborTime && (
+                      <div className="space-y-1 text-center md:text-left border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 md:pl-8">
+                        <span className="text-[10px] font-black text-emerald-400/40 uppercase tracking-widest">{t('common.est_labor_time', 'Estimated Labor Time')}</span>
+                        <div className="text-2xl font-black text-white">{result.estimatedLaborTime}</div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <a 
@@ -1045,6 +1173,38 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
               </div>
             </div>
             <div className="text-[8px] uppercase tracking-widest">{t('common.copyright', '© 2026 REPAIRWIZARD.NET')}</div>
+          </div>
+
+          {/* Mobile Recent Scans (Visible only on mobile) */}
+          <div ref={recentScansRef} className="lg:hidden mt-12 pt-12 border-t border-white/5 space-y-4">
+            <div className="flex items-center gap-2 text-cyan-400/40 text-[10px] font-black uppercase tracking-widest mb-4">
+              <History size={14} />
+              {t('common.recent_scans', 'Recent Scans')}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {recentScans.map((scan, i) => (
+                <button 
+                  key={i}
+                  onClick={() => { 
+                    setInput(scan.code); 
+                    setResult(scan);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full text-left p-4 bg-[#0d1117] border border-white/5 rounded-xl hover:border-cyan-500/30 transition-all group"
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black text-cyan-400">{scan.code}</span>
+                    <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="text-[8px] text-slate-500 uppercase truncate mt-1">{scan.partName}</div>
+                </button>
+              ))}
+              {recentScans.length === 0 && (
+                <div className="text-[10px] text-slate-600 italic p-4 text-center border border-dashed border-white/5 rounded-xl">
+                  {t('common.no_recent_scans', 'No recent scans')}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

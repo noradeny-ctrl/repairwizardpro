@@ -48,6 +48,18 @@ service cloud.firestore {
     //   - status: string
     //   - createdAt: string (ISO date)
     //
+    // Collection: /partners/{partnerId}
+    // Document ID: Auto-generated or from application ID
+    // Fields:
+    //   - business_name: string
+    //   - is_verified: bool
+    //   - contact: map
+    //   - location: map
+    //   - specialties: list
+    //   - services_offered: list
+    //   - policy: map
+    //   - subscription_end_date: string (ISO date)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -146,9 +158,14 @@ service cloud.firestore {
 
     match /partnerApplications/{applicationId} {
       allow read: if isAdmin();
-      allow create: if isValidPartnerApp(request.resource.data) && request.resource.data.status == 'pending';
-      allow update: if isAdmin() && isValidPartnerApp(request.resource.data);
+      allow create: if hasRequiredFields(['companyName', 'businessType', 'fullName', 'email', 'phone', 'status', 'submittedAt']) && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /partners/{partnerId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
     }
 
     match /repairs/{repairId} {
