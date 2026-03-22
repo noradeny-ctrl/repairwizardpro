@@ -10,11 +10,11 @@ import { analyzeProblem, WizardError } from './services/geminiService';
 import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardIcon from './components/WizardIcon';
+import ErrorModal from './components/ErrorModal';
 import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
-import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -180,7 +180,8 @@ const App: React.FC = () => {
         if (errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')) {
           setState(prev => ({ 
             ...prev, 
-            error: t('common.connection_throttled', "The Wizard's connection is currently throttled. Please wait a few seconds and refresh.")
+            error: t('common.connection_throttled', "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."),
+            errorCategory: 'quota'
           }));
         }
       }
@@ -220,7 +221,7 @@ const App: React.FC = () => {
 
   const startAnalysis = useCallback(async () => {
     if (!state.userInput.trim() && !state.selectedImage) {
-      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image.") }));
+      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image."), errorCategory: 'validation' }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
@@ -328,8 +329,9 @@ const App: React.FC = () => {
     let error = undefined;
     const trimmed = val.trim();
     
-    // Real-time VIN validation feedback - ONLY if it looks like a VIN (no spaces, mostly alphanumeric, length 17)
-    if (trimmed.length > 0 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed)) {
+    // Real-time VIN validation feedback - ONLY if it looks like a VIN attempt
+    // (length >= 10, no spaces, alphanumeric)
+    if (trimmed.length >= 10 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed)) {
       if (/[IOQ]/i.test(trimmed)) {
         error = t('common.vin_invalid_chars', "VINs never contain the letters I, O, or Q.");
       } else if (trimmed.length === 17 && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(trimmed)) {
@@ -703,7 +705,7 @@ const App: React.FC = () => {
 
             {/* Inline Error Message */}
             <AnimatePresence>
-              {state.error && (
+              {state.error && !['validation', 'network', 'quota'].includes(state.errorCategory || '') && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -797,9 +799,6 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="mt-8">
-            <VerifiedPartnersGrid livePartners={livePartners} />
-          </div>
 
           <div className="h-40" />
           </main>
@@ -822,6 +821,18 @@ const App: React.FC = () => {
         </div>
         {state.isAnalyzing && <ProtocolInitialization />}
         {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} user={user} onLogin={handleLogin} /></div>}
+        
+        <ErrorModal 
+          isOpen={!!state.error && (state.errorCategory === 'network' || state.errorCategory === 'quota' || (state.errorCategory === 'validation' && !state.userInput.trim()))}
+          title={state.errorCategory === 'validation' ? t('common.input_required', 'INPUT REQUIRED') : "WIZARD CONNECTION ERROR"}
+          message={state.error || ''}
+          category={state.errorCategory}
+          onRetry={() => setState(prev => ({ ...prev, error: undefined, errorCategory: undefined }))}
+          onBack={() => {
+            setState(prev => ({ ...prev, error: undefined, errorCategory: undefined, isStarted: false }));
+            resetApp();
+          }}
+        />
       </div>
     );
   };

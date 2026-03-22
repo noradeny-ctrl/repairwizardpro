@@ -27,30 +27,6 @@ const staticPartners: Partner[] = [
       "fair_price_guarantee": true,
       "description": "Standard rates apply for all diagnostic services."
     }
-  },
-  {
-    "id": "partner_1002",
-    "business_name": "Noor Auto Electric & A/C",
-    "is_verified": true,
-    "location": {
-      "city": "Nashville",
-      "coordinates": {
-        "latitude": 36.0595,
-        "longitude": -86.6732
-      }
-    },
-    "contact": {
-      "whatsapp_link": "https://wa.me/16159168034",
-    },
-    "images": {
-      "profile": "https://images.unsplash.com/photo-1517524008436-bbdb53ac5445?q=80&w=1000&auto=format&fit=crop",
-    },
-    "specialties": ["Electrical Systems", "A/C Repair", "Diagnostics"],
-    "services_offered": ["Battery Test", "AC Component Replacement", "Alternator Repair"],
-    "policy": {
-      "fair_price_guarantee": true,
-      "description": "Guaranteed fair pricing on all labor."
-    }
   }
 ];
 

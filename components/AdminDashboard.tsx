@@ -18,7 +18,11 @@ import {
   MailCheck,
   Loader2,
   Edit2,
-  Send
+  Send,
+  Plus,
+  Trash2,
+  Save,
+  X
 } from 'lucide-react';
 import { 
   db, 
@@ -59,7 +63,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'applications' | 'partners'>('applications');
   const [partners, setPartners] = useState<any[]>([]);
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
+  const [isAddingPartner, setIsAddingPartner] = useState(false);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  const [newPartner, setNewPartner] = useState({
+    business_name: '',
+    specialties: '',
+    services_offered: '',
+    city: 'Erbil',
+    phone: '',
+    email: '',
+    whatsapp_link: '',
+    profile_image: 'https://picsum.photos/seed/garage/400/300',
+    description: '',
+    subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    lat: 36.1901,
+    lng: 44.0091
+  });
 
   useEffect(() => {
     fetchApplications();
@@ -151,6 +172,69 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
+  const handleAddPartner = async () => {
+    if (!newPartner.business_name) return;
+    setLoading(true);
+    try {
+      const partnerId = crypto.randomUUID();
+      const partnerRef = doc(db, 'partners', partnerId);
+      await setDoc(partnerRef, {
+        business_name: newPartner.business_name,
+        is_verified: true,
+        contact: {
+          email: newPartner.email,
+          phone: newPartner.phone,
+          whatsapp_link: newPartner.whatsapp_link || `https://wa.me/${newPartner.phone.replace(/\D/g, '')}`
+        },
+        location: {
+          city: newPartner.city,
+          coordinates: { latitude: Number(newPartner.lat), longitude: Number(newPartner.lng) }
+        },
+        specialties: newPartner.specialties.split(',').map(s => s.trim()).filter(Boolean),
+        services_offered: newPartner.services_offered.split(',').map(s => s.trim()).filter(Boolean),
+        images: {
+          profile: newPartner.profile_image
+        },
+        policy: {
+          fair_price_guarantee: true,
+          description: newPartner.description || "Verified Partner"
+        },
+        subscription_end_date: newPartner.subscription_expiry
+      });
+      setIsAddingPartner(false);
+      setNewPartner({
+        business_name: '',
+        specialties: '',
+        services_offered: '',
+        city: 'Erbil',
+        phone: '',
+        email: '',
+        whatsapp_link: '',
+        profile_image: 'https://picsum.photos/seed/garage/400/300',
+        description: '',
+        subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        lat: 36.1901,
+        lng: 44.0091
+      });
+      await fetchPartners();
+    } catch (error) {
+      console.error("Error adding partner:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeletePartner = async (partnerId: string) => {
+    try {
+      const partnerRef = doc(db, 'partners', partnerId);
+      await updateDoc(partnerRef, { is_verified: false }); // Soft delete
+      await fetchPartners();
+      setConfirmDeleteId(null);
+    } catch (error) {
+      console.error("Error deleting partner:", error);
+    }
+  };
+
   const handleReject = async (appId: string) => {
     setProcessingId(appId);
     try {
@@ -222,6 +306,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
               Active Partners
             </button>
           </div>
+          
+          {activeTab === 'partners' && (
+            <button
+              onClick={() => setIsAddingPartner(true)}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-black rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20"
+            >
+              <Plus size={14} />
+              Add Partner
+            </button>
+          )}
         </div>
 
         {activeTab === 'applications' && (
@@ -356,102 +450,380 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
             </div>
           )
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {partners.map((partner) => (
+          <div className="space-y-6">
+            {isAddingPartner && (
               <motion.div
-                key={partner.id}
-                layout
-                className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 hover:border-cyan-500/30 transition-all group"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-slate-900 border border-cyan-500/30 rounded-3xl p-8 shadow-2xl shadow-cyan-500/10"
               >
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20">
-                      <ShieldCheck className="text-emerald-400" size={20} />
-                    </div>
-                    <div>
-                      <h3 className="font-black text-white uppercase tracking-tight">{partner.business_name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
-                          {partner.location.city}
-                        </span>
-                        <span className="text-[8px] font-mono text-slate-600">
-                          Expires: {partner.subscription_end_date}
-                        </span>
-                      </div>
-                    </div>
+                <div className="flex justify-between items-center mb-8">
+                  <h2 className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
+                    <Plus className="text-cyan-400" />
+                    New Partner Registration
+                  </h2>
+                  <button onClick={() => setIsAddingPartner(false)} className="p-2 hover:bg-white/5 rounded-full">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Business Name</label>
+                    <input 
+                      type="text"
+                      value={newPartner.business_name}
+                      onChange={(e) => setNewPartner({...newPartner, business_name: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      placeholder="e.g. Erbil Auto Care"
+                    />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => sendApprovalEmail({ email: partner.contact.email })}
-                      className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors"
-                      title="Send Test Email"
-                    >
-                      <Send size={16} />
-                    </button>
-                    <button 
-                      onClick={() => setEditingPartnerId(partner.id === editingPartnerId ? null : partner.id)}
-                      className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-cyan-400 transition-colors"
-                      title="Edit Partner"
-                    >
-                      <Edit2 size={16} />
-                    </button>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">City</label>
+                    <input 
+                      type="text"
+                      value={newPartner.city}
+                      onChange={(e) => setNewPartner({...newPartner, city: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Phone Number</label>
+                    <input 
+                      type="text"
+                      value={newPartner.phone}
+                      onChange={(e) => setNewPartner({...newPartner, phone: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      placeholder="+964..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Email Address</label>
+                    <input 
+                      type="email"
+                      value={newPartner.email}
+                      onChange={(e) => setNewPartner({...newPartner, email: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Specialties (comma separated)</label>
+                    <input 
+                      type="text"
+                      value={newPartner.specialties}
+                      onChange={(e) => setNewPartner({...newPartner, specialties: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      placeholder="e.g. Engine, Transmission, Electrical"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Services Offered (comma separated)</label>
+                    <input 
+                      type="text"
+                      value={newPartner.services_offered}
+                      onChange={(e) => setNewPartner({...newPartner, services_offered: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      placeholder="e.g. Oil Change, Brake Repair, Diagnostic"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Business Description</label>
+                    <textarea 
+                      value={newPartner.description}
+                      onChange={(e) => setNewPartner({...newPartner, description: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all min-h-[100px]"
+                      placeholder="Describe the partner's business and policy..."
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Profile Image URL</label>
+                    <input 
+                      type="text"
+                      value={newPartner.profile_image}
+                      onChange={(e) => setNewPartner({...newPartner, profile_image: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Subscription Expiry</label>
+                    <input 
+                      type="date"
+                      value={newPartner.subscription_expiry}
+                      onChange={(e) => setNewPartner({...newPartner, subscription_expiry: e.target.value})}
+                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Latitude</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        value={newPartner.lat}
+                        onChange={(e) => setNewPartner({...newPartner, lat: parseFloat(e.target.value)})}
+                        className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Longitude</label>
+                      <input 
+                        type="number"
+                        step="any"
+                        value={newPartner.lng}
+                        onChange={(e) => setNewPartner({...newPartner, lng: parseFloat(e.target.value)})}
+                        className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {editingPartnerId === partner.id ? (
-                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">City</label>
-                        <input 
-                          type="text" 
-                          defaultValue={partner.location.city}
-                          onBlur={(e) => handleUpdatePartner(partner.id, { 'location.city': e.target.value })}
-                          className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
-                        />
+                <div className="mt-8 flex gap-3">
+                  <button
+                    onClick={handleAddPartner}
+                    className="flex-1 py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-xs uppercase tracking-[0.2em] rounded-2xl transition-all shadow-xl shadow-cyan-500/20"
+                  >
+                    Register Partner
+                  </button>
+                  <button
+                    onClick={() => setIsAddingPartner(false)}
+                    className="px-8 py-4 bg-white/5 hover:bg-white/10 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {partners.filter(p => p.is_verified !== false).map((partner) => (
+                <motion.div
+                  key={partner.id}
+                  layout
+                  className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 hover:border-cyan-500/30 transition-all group"
+                >
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center border border-emerald-500/20 overflow-hidden">
+                        {partner.images?.profile ? (
+                          <img src={partner.images.profile} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <ShieldCheck className="text-emerald-400" size={20} />
+                        )}
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Specialties (comma separated)</label>
-                        <input 
-                          type="text" 
-                          defaultValue={partner.specialties.join(', ')}
-                          onBlur={(e) => handleUpdatePartner(partner.id, { specialties: e.target.value.split(',').map((s: string) => s.trim()) })}
-                          className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
-                        />
+                      <div>
+                        <h3 className="font-black text-white uppercase tracking-tight">{partner.business_name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
+                            {partner.location?.city}
+                          </span>
+                          <span className="text-[8px] font-mono text-slate-600">
+                            Expires: {partner.subscription_end_date}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex justify-end">
+                    <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => setEditingPartnerId(null)}
-                        className="px-4 py-2 bg-cyan-500 text-black text-[10px] font-black uppercase tracking-widest rounded-lg"
+                        onClick={() => sendApprovalEmail({ email: partner.contact?.email })}
+                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors"
+                        title="Send Test Email"
                       >
-                        Done
+                        <Send size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setEditingPartnerId(partner.id === editingPartnerId ? null : partner.id)}
+                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-cyan-400 transition-colors"
+                        title="Edit Partner"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setConfirmDeleteId(partner.id)}
+                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                        title="Delete Partner"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Specialties</span>
-                      <div className="flex flex-wrap gap-1">
-                        {partner.specialties.map((s: string) => (
-                          <span key={s} className="text-[8px] font-bold px-2 py-0.5 bg-white/5 rounded text-slate-400">
-                            {s}
-                          </span>
-                        ))}
+
+                  {confirmDeleteId === partner.id && (
+                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl animate-in zoom-in-95 duration-200">
+                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-3 text-center">
+                        Confirm Soft Delete? (Sets is_verified to false)
+                      </p>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => handleDeletePartner(partner.id)}
+                          className="flex-1 py-2 bg-red-500 hover:bg-red-400 text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                        >
+                          Confirm
+                        </button>
+                        <button 
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Contact</span>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-300">
-                        <Mail size={10} className="text-cyan-500/50" />
-                        {partner.contact.email}
+                  )}
+
+                  {editingPartnerId === partner.id ? (
+                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Business Name</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.business_name}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { business_name: e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">City</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.location?.city}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'location.city': e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Specialties (comma separated)</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.specialties?.join(', ')}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { specialties: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Services (comma separated)</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.services_offered?.join(', ')}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { services_offered: e.target.value.split(',').map((s: string) => s.trim()).filter(Boolean) })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Description</label>
+                          <textarea 
+                            defaultValue={partner.policy?.description}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'policy.description': e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none min-h-[60px]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Phone</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.contact?.phone}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'contact.phone': e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Subscription Expiry</label>
+                          <input 
+                            type="date" 
+                            defaultValue={partner.subscription_end_date}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { subscription_end_date: e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Latitude</label>
+                          <input 
+                            type="number" 
+                            step="any"
+                            defaultValue={partner.location?.coordinates?.latitude}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'location.coordinates.latitude': parseFloat(e.target.value) })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Longitude</label>
+                          <input 
+                            type="number" 
+                            step="any"
+                            defaultValue={partner.location?.coordinates?.longitude}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'location.coordinates.longitude': parseFloat(e.target.value) })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                        <div className="col-span-2 space-y-1">
+                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Profile Image URL</label>
+                          <input 
+                            type="text" 
+                            defaultValue={partner.images?.profile}
+                            onBlur={(e) => handleUpdatePartner(partner.id, { 'images.profile': e.target.value })}
+                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <button 
+                          onClick={() => setEditingPartnerId(null)}
+                          className="px-4 py-2 bg-cyan-500 text-black text-[10px] font-black uppercase tracking-widest rounded-lg flex items-center gap-2"
+                        >
+                          <Save size={12} />
+                          Save Changes
+                        </button>
                       </div>
                     </div>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+                  ) : (
+                    <div className="grid grid-cols-1 gap-6">
+                      <div className="space-y-1">
+                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">About & Policy</span>
+                        <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                          {partner.policy?.description || "No description provided."}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Specialties</span>
+                          <div className="flex flex-wrap gap-1">
+                            {partner.specialties?.map((s: string) => (
+                              <span key={s} className="text-[8px] font-bold px-2 py-0.5 bg-white/5 rounded text-slate-400">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Contact</span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2 text-[10px] text-slate-300">
+                              <Mail size={10} className="text-cyan-500/50" />
+                              {partner.contact?.email}
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-300">
+                              <Phone size={10} className="text-cyan-500/50" />
+                              {partner.contact?.phone}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      {partner.services_offered && partner.services_offered.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Services Offered</span>
+                          <div className="flex flex-wrap gap-1">
+                            {partner.services_offered.map((s: string) => (
+                              <span key={s} className="text-[8px] font-bold px-2 py-0.5 bg-cyan-500/10 rounded text-cyan-400 border border-cyan-500/20">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
           </div>
         )}
       </main>

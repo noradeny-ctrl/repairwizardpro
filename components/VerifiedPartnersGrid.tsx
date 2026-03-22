@@ -14,24 +14,7 @@ export const VerifiedPartnersGrid: React.FC<VerifiedPartnersGridProps> = ({ live
   const { t } = useTranslation();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const STATIC_PARTNERS = [
-    {
-      name: 'Copart Elite',
-      category: t('common.auction_network'),
-      icon: <Globe className="text-cyan-400" size={20} />,
-      description: t('common.copart_desc'),
-      status: t('common.verified'),
-      color: 'cyan'
-    },
-    {
-      name: 'IAAI Premium',
-      category: t('common.inventory_source'),
-      icon: <Zap className="text-emerald-400" size={20} />,
-      description: t('common.iaai_desc'),
-      status: t('common.active'),
-      color: 'emerald'
-    }
-  ];
+  const STATIC_PARTNERS: any[] = [];
 
   return (
     <div className="w-full space-y-6">
