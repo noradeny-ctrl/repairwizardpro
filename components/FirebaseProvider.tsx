@@ -43,8 +43,11 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const loginWithEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Email login failed:", error);
+      if (error.code === 'auth/invalid-credential') {
+        throw new Error("Invalid email or password. Please check your credentials.");
+      }
       throw error;
     }
   };
@@ -67,8 +70,11 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await setDoc(userDocRef, newProfile);
       setUserProfile(newProfile);
       setIsAdmin(newProfile.role === 'admin');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Registration failed:", error);
+      if (error.code === 'auth/email-already-in-use') {
+        throw new Error("This email is already registered. Please login instead.");
+      }
       throw error;
     }
   };

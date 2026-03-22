@@ -199,7 +199,12 @@
     "system_status": "بارێ سیستەمى",
     "latency": "دەمێ گیرۆبوونێ",
     "wizard_load": "بارێ هۆستای",
-    "do_not_disconnect": "پەیوەندیێ نەپچڕینە"
+    "do_not_disconnect": "پەیوەندیێ نەپچڕینە",
+    "invalid_credentials": "Navê bikarhêner an şîfreya şaş. Ji kerema xwe agahiyên xwe kontrol bikin û dîsa biceribînin.",
+    "email_in_use": "Ev e-mail berê hatiye qeydkirin. Ji kerema xwe têkevin.",
+    "weak_password": "Şîfre pir lawaz e. Ji kerema xwe herî kêm 6 tîpan bikar bînin.",
+    "invalid_email": "Ji kerema xwe e-mailek derbasdar binivîsin.",
+    "auth_error": "Têketin bi ser neket. Ji kerema xwe dîsa biceribînin."
   },
   "import_estimate": {
     "title": "خەملاندنا هاوردەکرنا ڕاستەوخۆ یا هۆستای",

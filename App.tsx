@@ -486,12 +486,18 @@ const App: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-white/5 animate-pulse" />
           ) : user ? (
             <div className="flex items-center gap-3 bg-slate-900/40 backdrop-blur-md p-2 rounded-2xl border border-white/10">
-              <img 
-                src={user.photoURL || ''} 
-                alt="Profile" 
-                className="w-8 h-8 rounded-lg border border-white/10"
-                referrerPolicy="no-referrer"
-              />
+              {user.photoURL ? (
+                <img 
+                  src={user.photoURL} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-lg border border-white/10"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
+                  <UserIcon size={16} className="text-slate-500" />
+                </div>
+              )}
               <div className="flex flex-col pr-2">
                 <span className="text-[8px] font-black text-white uppercase tracking-tight">
                   {userProfile?.displayName || user.displayName}
@@ -559,20 +565,26 @@ const App: React.FC = () => {
                     {userProfile?.role || 'User'}
                   </span>
                 </div>
-                <div className="relative group">
-                  <img 
-                    src={user.photoURL || ''} 
-                    alt="Profile" 
-                    className="w-10 h-10 rounded-xl border border-white/10 group-hover:border-cyan-500/50 transition-all cursor-pointer"
-                    referrerPolicy="no-referrer"
-                  />
-                  <button 
-                    onClick={handleLogout}
-                    className="absolute -bottom-1 -right-1 p-1.5 bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
-                  >
-                    <LogOut size={10} />
-                  </button>
-                </div>
+                  <div className="relative group">
+                    {user.photoURL ? (
+                      <img 
+                        src={user.photoURL} 
+                        alt="Profile" 
+                        className="w-10 h-10 rounded-xl border border-white/10 group-hover:border-cyan-500/50 transition-all cursor-pointer"
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center group-hover:border-cyan-500/50 transition-all cursor-pointer">
+                        <UserIcon size={20} className="text-slate-500" />
+                      </div>
+                    )}
+                    <button 
+                      onClick={handleLogout}
+                      className="absolute -bottom-1 -right-1 p-1.5 bg-red-500 rounded-lg text-white opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                    >
+                      <LogOut size={10} />
+                    </button>
+                  </div>
               </div>
             ) : (
               <button 

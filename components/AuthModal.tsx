@@ -32,7 +32,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
       onClose();
     } catch (err: any) {
       console.error("Auth error:", err);
-      setError(err.message || "Authentication failed");
+      let message = "Authentication failed";
+      if (err.code === 'auth/invalid-credential') {
+        message = "Invalid email or password. If you don't have an account, please sign up first.";
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = "This email is already in use. Please login instead.";
+      } else if (err.code === 'auth/weak-password') {
+        message = "Password should be at least 6 characters.";
+      } else if (err.code === 'auth/invalid-email') {
+        message = "Please enter a valid email address.";
+      } else if (err.message) {
+        message = err.message;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

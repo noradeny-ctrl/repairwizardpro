@@ -199,8 +199,8 @@ const ResultView: React.FC<ResultViewProps> = ({
                 <div className="space-y-3 pt-2">
                   {(result.vinScanData.recalls || [
                     { id: 'NHTSA-23V', title: 'Airbag Inflator Inspection', date: '2023-11-12', status: 'Closed' }
-                  ]).map((recall, i) => (
-                    <div key={i} className="p-4 bg-black/20 rounded-2xl border border-white/5 flex justify-between items-center">
+                  ]).map((recall) => (
+                    <div key={recall.id} className="p-4 bg-black/20 rounded-2xl border border-white/5 flex justify-between items-center">
                       <div>
                         <p className="text-[10px] font-bold text-white mb-1">{recall.title}</p>
                         <p className="text-[8px] text-slate-500 font-mono uppercase">{recall.id} • {recall.date}</p>
@@ -225,8 +225,8 @@ const ResultView: React.FC<ResultViewProps> = ({
                 <div className="space-y-4 pt-2">
                   {(result.vinScanData.auctionHistory || [
                     { date: '2024-01-15', odometer: '42,300 mi', damage: 'Front End', location: 'COPART - FL', finalBid: '$12,400' }
-                  ]).map((record, i) => (
-                    <div key={i} className="p-4 bg-black/20 rounded-2xl border border-white/5 space-y-3">
+                  ]).map((record) => (
+                    <div key={record.date} className="p-4 bg-black/20 rounded-2xl border border-white/5 space-y-3">
                       <div className="flex justify-between items-center">
                         <p className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">{record.location}</p>
                         <p className="text-[10px] font-bold text-white">{record.date}</p>
@@ -410,9 +410,9 @@ const ResultView: React.FC<ResultViewProps> = ({
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('common.verified_sources', 'Verified Web Sources')}</p>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              {result.groundingSources.map((source, i) => (
+              {result.groundingSources.map((source) => (
                 <a 
-                  key={i}
+                  key={source.uri}
                   href={source.uri}
                   target="_blank"
                   rel="noopener noreferrer"

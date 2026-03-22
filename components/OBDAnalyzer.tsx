@@ -350,9 +350,9 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
             {t('common.recent_scans', 'Recent Scans')}
           </div>
           <div className="space-y-2">
-            {recentScans.map((scan, i) => (
+            {recentScans.map((scan) => (
               <button 
-                key={i}
+                key={scan.code}
                 onClick={() => { setInput(scan.code); setResult(scan); }}
                 className="w-full text-left p-4 bg-[#0d1117] border border-white/5 rounded-xl hover:border-cyan-500/30 transition-all group"
               >
@@ -879,9 +879,9 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                   {result.groundingSources && result.groundingSources.length > 0 && (
                     <div className="mt-6 pt-6 border-t border-white/5 flex flex-wrap gap-3 relative z-10">
                       <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest w-full mb-1">{t('common.verified_sources', 'Verified Intelligence Sources')}:</span>
-                      {result.groundingSources.map((source, i) => (
+                      {result.groundingSources.map((source) => (
                         <a 
-                          key={i}
+                          key={source.uri}
                           href={source.uri}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -963,7 +963,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                           const isPriority = priorityChecks.includes(i);
                           return (
                             <div 
-                              key={i} 
+                              key={check} 
                               onClick={() => togglePriority(i)}
                               className={`flex items-center justify-between gap-3 p-4 rounded-xl border transition-all cursor-pointer group ${
                                 isPriority 
@@ -1001,7 +1001,7 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                     </div>
                     <div className="space-y-4">
                       {result.repairSteps?.map((step, i) => (
-                        <div key={i} className="flex items-start gap-4 group">
+                        <div key={step} className="flex items-start gap-4 group">
                           <div className="flex flex-col items-center gap-1">
                             <div className="w-6 h-6 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-[10px] font-black text-emerald-400 group-hover:bg-emerald-500 group-hover:text-black transition-all">
                               {i + 1}
@@ -1059,8 +1059,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                         {t('common.tools_required', 'Required Arsenal')}
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        {result.toolsRequired?.map((tool, i) => (
-                          <span key={i} className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:border-cyan-500/30 transition-colors">
+                        {result.toolsRequired?.map((tool) => (
+                          <span key={tool} className="px-3 py-1.5 bg-white/5 border border-white/5 rounded-lg text-[10px] text-slate-400 font-bold uppercase tracking-wider hover:border-cyan-500/30 transition-colors">
                             {tool}
                           </span>
                         ))}
@@ -1074,8 +1074,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                         {t('common.safety_precautions', 'Safety Protocols')}
                       </div>
                       <ul className="space-y-2">
-                        {result.safetyPrecautions?.map((p, i) => (
-                          <li key={i} className="text-[10px] text-red-200/70 flex items-start gap-2 leading-relaxed">
+                        {result.safetyPrecautions?.map((p) => (
+                          <li key={p} className="text-[10px] text-red-200/70 flex items-start gap-2 leading-relaxed">
                             <span className="text-red-500 mt-1">•</span>
                             {p}
                           </li>
@@ -1093,8 +1093,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                       {t('common.symptoms', 'Common Symptoms')}
                     </div>
                     <ul className="space-y-2">
-                      {result.symptoms.map((s, i) => (
-                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                      {result.symptoms.map((s) => (
+                        <li key={s} className="text-xs text-slate-400 flex items-start gap-2">
                           <span className="text-cyan-500 mt-1">•</span>
                           {s}
                         </li>
@@ -1107,8 +1107,8 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
                       {t('common.causes', 'Likely Causes')}
                     </div>
                     <ul className="space-y-2">
-                      {result.commonCauses.map((c, i) => (
-                        <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
+                      {result.commonCauses.map((c) => (
+                        <li key={c} className="text-xs text-slate-400 flex items-start gap-2">
                           <span className="text-red-500 mt-1">•</span>
                           {c}
                         </li>
@@ -1182,9 +1182,9 @@ const OBDAnalyzer: React.FC<OBDAnalyzerProps> = ({ mode = RegionMode.WESTERN, in
               {t('common.recent_scans', 'Recent Scans')}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {recentScans.map((scan, i) => (
+              {recentScans.map((scan) => (
                 <button 
-                  key={i}
+                  key={scan.code}
                   onClick={() => { 
                     setInput(scan.code); 
                     setResult(scan);

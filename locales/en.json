@@ -200,7 +200,12 @@
     "system_status": "SYSTEM_STATUS",
     "latency": "LATENCY",
     "wizard_load": "WIZARD_LOAD",
-    "do_not_disconnect": "DO NOT DISCONNECT_SESSION"
+    "do_not_disconnect": "DO NOT DISCONNECT_SESSION",
+    "invalid_credentials": "Invalid email or password. Please check your credentials and try again.",
+    "email_in_use": "This email is already registered. Please login instead.",
+    "weak_password": "Password is too weak. Please use at least 6 characters.",
+    "invalid_email": "Please enter a valid email address.",
+    "auth_error": "Authentication failed. Please try again."
   },
   "import_estimate": {
     "title": "Wizard Direct Import Estimate",
