@@ -17,6 +17,7 @@ import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PartnerDashboard } from './components/PartnerDashboard';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
+import { AuthModal } from './components/AuthModal';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -151,6 +152,7 @@ const App: React.FC = () => {
     isAnalyzing: false,
     isStarted: false,
     selectedImage: undefined,
+    isAuthModalOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
@@ -260,12 +262,8 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
   }, [i18n]);
 
-  const handleLogin = async () => {
-    try {
-      await login();
-    } catch (error) {
-      console.error("Login failed:", error);
-    }
+  const handleLogin = () => {
+    setState(prev => ({ ...prev, isAuthModalOpen: true }));
   };
 
   const handleLogout = async () => {
@@ -518,6 +516,12 @@ const App: React.FC = () => {
         </div>
 
         <DraggableLogo />
+        
+        <AuthModal 
+          isOpen={state.isAuthModalOpen} 
+          onClose={() => setState(prev => ({ ...prev, isAuthModalOpen: false }))} 
+        />
+
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
           {[{ id: RegionMode.BADINAN, label: t('modes.badinan'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: t('modes.sorani'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: t('modes.arabic'), flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: t('modes.western'), flag: <USAFlag className="w-10" /> }].map((m) => (
             <button key={m.id} onClick={() => setInitialMode(m.id)} className="flex flex-col items-center p-5 rounded-[2rem] bg-slate-800/40 border border-white/5 transition-all hover:bg-emerald-500/10 active:scale-95 shadow-xl backdrop-blur-sm">

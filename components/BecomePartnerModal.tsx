@@ -5,6 +5,7 @@ import { X, ShieldCheck, Send, Building2, User, Mail, Phone, CheckCircle2, Loade
 import { useTranslation } from 'react-i18next';
 import { db, collection, setDoc, doc, Timestamp, handleFirestoreError, OperationType } from '../firebase';
 import { useFirebase } from './FirebaseProvider';
+import { AuthModal } from './AuthModal';
 
 interface BecomePartnerModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const BecomePartnerModal: React.FC<BecomePartnerModalProps> = ({ isOpen, 
   const { user, login } = useFirebase();
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     companyName: '',
@@ -123,10 +125,10 @@ export const BecomePartnerModal: React.FC<BecomePartnerModalProps> = ({ isOpen, 
                         <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-1">Please login to apply for partnership</p>
                       </div>
                       <button
-                        onClick={login}
+                        onClick={() => setIsAuthModalOpen(true)}
                         className="w-full py-4 bg-cyan-500 hover:bg-cyan-400 text-black font-black rounded-2xl transition-all uppercase tracking-widest text-[10px]"
                       >
-                        Login with Google
+                        Login to Apply
                       </button>
                     </div>
                   ) : (
@@ -246,6 +248,10 @@ export const BecomePartnerModal: React.FC<BecomePartnerModalProps> = ({ isOpen, 
         </div>
       </div>
     )}
+    <AuthModal 
+      isOpen={isAuthModalOpen} 
+      onClose={() => setIsAuthModalOpen(false)} 
+    />
   </AnimatePresence>
 );
 };

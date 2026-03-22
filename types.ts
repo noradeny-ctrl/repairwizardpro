@@ -99,4 +99,5 @@ export interface AppState {
   error?: string;
   errorCategory?: 'network' | 'safety' | 'quota' | 'permission' | 'generic' | 'validation';
   selectedImage?: string;
+  isAuthModalOpen: boolean;
 }
