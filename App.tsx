@@ -2,7 +2,7 @@
 // Main Application Component
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X, ShieldCheck } from 'lucide-react';
+import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X, ShieldCheck, History as HistoryIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fuse from 'fuse.js';
 import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
@@ -15,6 +15,7 @@ import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
+import { PartnerDashboard } from './components/PartnerDashboard';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
@@ -143,8 +144,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 
 const App: React.FC = () => {
   const { t, i18n } = useTranslation();
-  const { user, userProfile, loading } = useFirebase();
-  const isAdmin = userProfile?.role === 'admin';
+  const { user, userProfile, loading, isAdmin, login, logout } = useFirebase();
   const [state, setState] = useState<AppState>({
     userInput: '',
     mode: RegionMode.WESTERN,
@@ -161,6 +161,7 @@ const App: React.FC = () => {
   const [detectedOBD, setDetectedOBD] = useState<string | null>(null);
   const [obdInput, setObdInput] = useState('');
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
+  const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -209,7 +210,7 @@ const App: React.FC = () => {
   const saveRepairToFirestore = async (userInput: string, analysis: AnalysisResult) => {
     const repairData = {
       id: crypto.randomUUID(),
-      userId: 'anonymous',
+      userId: user?.uid || 'anonymous',
       issueDescription: userInput,
       aiDiagnosis: analysis.diagnosis,
       status: 'diagnosed',
@@ -261,7 +262,7 @@ const App: React.FC = () => {
 
   const handleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      await login();
     } catch (error) {
       console.error("Login failed:", error);
     }
@@ -269,7 +270,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await logout();
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -481,6 +482,41 @@ const App: React.FC = () => {
     return (
       <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden safe-area-pt">
         <SunBackground />
+        
+        <div className="absolute top-6 right-6 z-50">
+          {loading ? (
+            <div className="w-10 h-10 rounded-xl bg-white/5 animate-pulse" />
+          ) : user ? (
+            <div className="flex items-center gap-3 bg-slate-900/40 backdrop-blur-md p-2 rounded-2xl border border-white/10">
+              <img 
+                src={user.photoURL || ''} 
+                alt="Profile" 
+                className="w-8 h-8 rounded-lg border border-white/10"
+                referrerPolicy="no-referrer"
+              />
+              <div className="flex flex-col pr-2">
+                <span className="text-[8px] font-black text-white uppercase tracking-tight">
+                  {userProfile?.displayName || user.displayName}
+                </span>
+                <button 
+                  onClick={handleLogout}
+                  className="text-[7px] font-black text-red-400 uppercase tracking-widest text-left hover:text-red-300 transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button 
+              onClick={handleLogin}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95"
+            >
+              <LogIn size={14} />
+              <span>Login</span>
+            </button>
+          )}
+        </div>
+
         <DraggableLogo />
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
           {[{ id: RegionMode.BADINAN, label: t('modes.badinan'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: t('modes.sorani'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: t('modes.arabic'), flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: t('modes.western'), flag: <USAFlag className="w-10" /> }].map((m) => (
@@ -564,17 +600,20 @@ const App: React.FC = () => {
               </button>
             )}
 
+            {(userProfile?.role === 'partner' || isAdmin) && (
+              <button 
+                onClick={() => setIsPartnerDashboardOpen(true)}
+                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-emerald-500/20 group"
+                title="Partner Dashboard"
+              >
+                <HistoryIcon size={14} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">History</span>
+              </button>
+            )}
+
             <div className="hidden sm:block px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
               {state.mode}
             </div>
-            
-            <button 
-              onClick={() => setShowOBD(prev => !prev)}
-              className={`px-3 py-1.5 border rounded-xl transition-all active:scale-95 flex items-center gap-2 ${showOBD ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400' : 'bg-slate-800/80 border-white/10 text-slate-400 hover:text-cyan-400'}`}
-            >
-              <Activity size={14} />
-              <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline">{t('common.obd_breaker', 'OBD Breaker')}</span>
-            </button>
           </div>
         </header>
 
@@ -588,6 +627,12 @@ const App: React.FC = () => {
         {isAdminDashboardOpen && (
           <AdminDashboard 
             onClose={() => setIsAdminDashboardOpen(false)} 
+          />
+        )}
+
+        {isPartnerDashboardOpen && (
+          <PartnerDashboard 
+            onClose={() => setIsPartnerDashboardOpen(false)} 
           />
         )}
 

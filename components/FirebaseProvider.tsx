@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, Timestamp, FirebaseUser } from '../firebase';
+import { auth, db, onAuthStateChanged, doc, getDoc, setDoc, Timestamp, FirebaseUser, signInWithPopup, signOut, googleProvider } from '../firebase';
 
 interface FirebaseContextType {
   user: FirebaseUser | null;
   userProfile: any | null;
   loading: boolean;
   isAdmin: boolean;
+  login: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const FirebaseContext = createContext<FirebaseContextType>({
@@ -13,6 +15,8 @@ const FirebaseContext = createContext<FirebaseContextType>({
   userProfile: null,
   loading: true,
   isAdmin: false,
+  login: async () => {},
+  logout: async () => {},
 });
 
 export const useFirebase = () => useContext(FirebaseContext);
@@ -22,6 +26,22 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [userProfile, setUserProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const login = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Login failed:", error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -66,7 +86,7 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, []);
 
   return (
-    <FirebaseContext.Provider value={{ user, userProfile, loading, isAdmin }}>
+    <FirebaseContext.Provider value={{ user, userProfile, loading, isAdmin, login, logout }}>
       {children}
     </FirebaseContext.Provider>
   );

@@ -42,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 
 interface Application {
   id: string;
+  userId?: string;
   companyName: string;
   businessType: string;
   fullName: string;
@@ -125,7 +126,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       const appRef = doc(db, 'partnerApplications', app.id);
       await updateDoc(appRef, { status: 'approved' });
 
-      // 2. Create partner entry
+      // 2. Update user role if userId exists
+      if (app.userId) {
+        const userRef = doc(db, 'users', app.userId);
+        await updateDoc(userRef, { role: 'partner' })
+          .catch(err => console.error("Error updating user role:", err));
+      }
+
+      // 3. Create partner entry
       const partnerRef = doc(db, 'partners', app.id);
       await setDoc(partnerRef, {
         business_name: app.companyName,

@@ -34,7 +34,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <FirebaseProvider>
+        <App />
+      </FirebaseProvider>
     </ErrorBoundary>
   </React.StrictMode>
 );
