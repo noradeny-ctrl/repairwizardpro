@@ -15,6 +15,7 @@ import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
+import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
@@ -294,6 +295,19 @@ const App: React.FC = () => {
   const isRTL = state.mode !== RegionMode.WESTERN;
 
   const hasImage = !!state.selectedImage;
+
+  const looksLikeVin = useMemo(() => {
+    const trimmed = state.userInput.trim();
+    return trimmed.length >= 10 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed);
+  }, [state.userInput]);
+
+  const isImagePending = useMemo(() => {
+    return !!state.selectedImage && !state.result;
+  }, [state.selectedImage, state.result]);
+
+  const isObdInMainInput = useMemo(() => {
+    return /[PBUC][0-9]{4}/i.test(state.userInput) && !state.result;
+  }, [state.userInput, state.result]);
 
   const isValidVin = useMemo(() => {
     return /^[A-HJ-NPR-Z0-9]{17}$/i.test(state.userInput.trim());
@@ -593,7 +607,12 @@ const App: React.FC = () => {
           </main>
         ) : (
           <main className="flex-1 ios-scroll p-6 space-y-6 hide-scrollbar relative z-10 min-h-0">
-            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 ${isValidVin ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' : (hasImage ? 'border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.2)]' : (detectedOBD && !obdInput ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' : 'border-white/5'))}`}>
+            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 
+              ${(looksLikeVin || isImagePending) 
+                ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' 
+                : (isObdInMainInput 
+                  ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' 
+                  : 'border-white/5')}`}>
             <div className="relative">
               <textarea 
                 className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium relative z-10" 
@@ -601,9 +620,22 @@ const App: React.FC = () => {
                 value={state.userInput} 
                 onChange={handleInputChange} 
               />
-              {/* Highlight Overlay for Main Textarea (Simple indicator) */}
+              {/* Highlight Overlay for Main Textarea */}
               <AnimatePresence>
-                {detectedOBD && !obdInput && (
+                {looksLikeVin && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="absolute top-0 right-0 z-20 flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-xl backdrop-blur-sm"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
+                      {isValidVin ? t('common.vin_verified', 'VIN VERIFIED') : t('common.vin_detected', 'VIN DETECTED')}
+                    </span>
+                  </motion.div>
+                )}
+                {isObdInMainInput && !looksLikeVin && (
                   <motion.div 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -683,8 +715,8 @@ const App: React.FC = () => {
                     </div>
                     <div className="flex-1 pt-2">
                       <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
                           {t('common.visual_data_ready', 'VISUAL DATA READY')}
                         </span>
                       </div>
@@ -799,6 +831,9 @@ const App: React.FC = () => {
             </div>
           </div>
           
+          <div className="mt-8">
+            <VerifiedPartnersGrid livePartners={livePartners} />
+          </div>
 
           <div className="h-40" />
           </main>
