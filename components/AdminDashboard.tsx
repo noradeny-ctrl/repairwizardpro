@@ -200,7 +200,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
 
       // 3. Send Email (Simulated)
-      await sendApprovalEmail(app);
+      await sendNotification('approve', {
+        email: app.email,
+        phone: app.phone,
+        companyName: app.companyName
+      });
 
       // Refresh lists
       await fetchApplications();
@@ -220,6 +224,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     try {
       const partnerRef = doc(db, 'partners', partnerId);
       await updateDoc(partnerRef, data);
+      
+      // If verification status changed, notify the partner
+      if ('is_verified' in data) {
+        const partner = partners.find(p => p.id === partnerId);
+        if (partner) {
+          await sendNotification('verify', {
+            email: partner.contact?.email,
+            phone: partner.contact?.phone,
+            companyName: partner.business_name,
+            isVerified: data.is_verified
+          });
+        }
+      }
+
       await fetchPartners();
       setEditingPartnerId(null);
     } catch (error) {
@@ -233,8 +251,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
   const handleDeletePartner = async (partnerId: string) => {
     try {
+      // 1. Get partner details to find userId
+      const partner = partners.find(p => p.id === partnerId);
+      
+      // 2. Delete partner document
       await deleteDoc(doc(db, 'partners', partnerId));
+      
+      // 3. Revert user role if we have a userId
+      // Note: In our current schema, partnerId is often the same as appId or userId
+      // We should check if a user exists with this ID or if the partner doc has a userId field
+      const userRef = doc(db, 'users', partnerId);
+      await updateDoc(userRef, { role: 'user' }).catch(() => {
+        // User might not exist or ID might be different, ignore
+      });
+
       await fetchPartners();
+      await fetchUsers();
     } catch (error) {
       try {
         handleFirestoreError(error, OperationType.DELETE, 'partners');
@@ -307,11 +339,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
-  const handleReject = async (appId: string) => {
-    setProcessingId(appId);
+  const handleReject = async (app: Application) => {
+    setProcessingId(app.id);
     try {
-      const appRef = doc(db, 'partnerApplications', appId);
+      const appRef = doc(db, 'partnerApplications', app.id);
       await updateDoc(appRef, { status: 'rejected' });
+      
+      // Revert user role if they were previously a partner
+      if (app.userId) {
+        const userRef = doc(db, 'users', app.userId);
+        await updateDoc(userRef, { role: 'user' }).catch(() => {});
+      }
+
+      // Notify user
+      await sendNotification('reject', {
+        email: app.email,
+        phone: app.phone,
+        companyName: app.companyName
+      });
+
       await fetchApplications();
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'partnerApplications');
@@ -320,25 +366,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
-  const sendApprovalEmail = async (app: any) => {
-    console.log(`Sending approval notification to ${app.email} and ${app.phone}...`);
+  const sendNotification = async (type: 'approve' | 'reject' | 'verify', data: any) => {
+    console.log(`Sending ${type} notification to ${data.email}...`);
     
     try {
-      const response = await fetch('/api/notify/approve', {
+      const response = await fetch(`/api/notify/${type}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: app.email,
-          phone: app.phone,
-          companyName: app.companyName
-        })
+        body: JSON.stringify(data)
       });
 
       const results = await response.json();
       
-      // Visual feedback for simulation
+      // Visual feedback
       const notification = document.createElement('div');
-      notification.className = 'fixed top-4 right-4 z-[300] bg-emerald-500 text-black px-6 py-4 rounded-2xl shadow-2xl font-black uppercase tracking-widest flex flex-col gap-1 animate-bounce';
+      notification.className = `fixed top-4 right-4 z-[300] ${type === 'reject' ? 'bg-red-500' : 'bg-emerald-500'} text-black px-6 py-4 rounded-2xl shadow-2xl font-black uppercase tracking-widest flex flex-col gap-1 animate-bounce`;
       
       let statusText = '';
       if (results.email?.success) statusText += '📧 Email Sent ';
@@ -350,20 +392,54 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
           ${statusText}
         </div>
-        <div class="text-[8px] opacity-70">To: ${app.email}</div>
+        <div class="text-[8px] opacity-70">To: ${data.email}</div>
       `;
       document.body.appendChild(notification);
       setTimeout(() => notification.remove(), 5000);
     } catch (error) {
-      console.error("Error sending notifications:", error);
+      console.error(`Error sending ${type} notification:`, error);
     }
   };
 
   const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
       const userRef = doc(db, 'users', userId);
+      const user = users.find(u => u.id === userId);
+      const oldRole = user?.role || 'user';
+      
       await updateDoc(userRef, { role: newRole });
+
+      // If promoted to partner, create partner doc if it doesn't exist
+      if (newRole === 'partner' && oldRole !== 'partner') {
+        const partnerRef = doc(db, 'partners', userId);
+        await setDoc(partnerRef, {
+          business_name: user?.displayName || 'New Partner',
+          is_verified: true,
+          contact: {
+            email: user?.email || '',
+            phone: '',
+            whatsapp_link: ''
+          },
+          location: {
+            city: 'Erbil',
+            coordinates: { latitude: 36.1901, longitude: 44.0091 }
+          },
+          specialties: [],
+          services_offered: [],
+          policy: {
+            fair_price_guarantee: true,
+            description: "Verified Partner"
+          }
+        }, { merge: true });
+      }
+
+      // If demoted from partner, delete partner doc
+      if (oldRole === 'partner' && newRole !== 'partner') {
+        await deleteDoc(doc(db, 'partners', userId)).catch(() => {});
+      }
+
       await fetchUsers();
+      await fetchPartners();
     } catch (error) {
       try {
         handleFirestoreError(error, OperationType.UPDATE, 'users');
@@ -621,11 +697,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           Approve & Notify
                         </button>
                         <button
-                          onClick={() => handleReject(app.id)}
+                          onClick={() => handleReject(app)}
                           disabled={!!processingId}
                           className="px-4 py-3 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-black text-[10px] uppercase tracking-widest rounded-xl transition-all disabled:opacity-50"
                         >
-                          <XCircle size={14} />
+                          {processingId === app.id ? <Loader2 size={14} className="animate-spin" /> : <XCircle size={14} />}
                         </button>
                       </div>
                     )}
@@ -637,7 +713,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                           Confirmation Email Sent
                         </div>
                         <button 
-                          onClick={() => sendApprovalEmail(app)}
+                          onClick={() => sendNotification('approve', {
+                            email: app.email,
+                            phone: app.phone,
+                            companyName: app.companyName
+                          })}
                           className="text-[8px] font-black text-emerald-500 hover:text-emerald-400 uppercase underline"
                         >
                           Resend
@@ -823,7 +903,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                     </div>
                     <div className="flex items-center gap-2">
                       <button 
-                        onClick={() => sendApprovalEmail({ email: partner.contact?.email })}
+                        onClick={() => sendNotification('approve', {
+                          email: partner.contact?.email,
+                          phone: partner.contact?.phone,
+                          companyName: partner.business_name
+                        })}
                         className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-emerald-400 transition-colors"
                         title="Send Test Email"
                       >

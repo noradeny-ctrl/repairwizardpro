@@ -2,7 +2,7 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { sendApprovalNotification } from './api/notify.ts';
+import { sendApprovalNotification, sendRejectionNotification, sendVerificationNotification } from './api/notify.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +23,38 @@ async function startServer() {
 
     try {
       const results = await sendApprovalNotification(email, phone, companyName);
+      res.json(results);
+    } catch (error) {
+      console.error('Notification Error:', error);
+      res.status(500).json({ error: 'Failed to send notifications' });
+    }
+  });
+
+  app.post('/api/notify/reject', async (req, res) => {
+    const { email, phone, companyName } = req.body;
+    
+    if (!email || !phone || !companyName) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+      const results = await sendRejectionNotification(email, phone, companyName);
+      res.json(results);
+    } catch (error) {
+      console.error('Notification Error:', error);
+      res.status(500).json({ error: 'Failed to send notifications' });
+    }
+  });
+
+  app.post('/api/notify/verify', async (req, res) => {
+    const { email, phone, companyName, isVerified } = req.body;
+    
+    if (!email || !phone || !companyName) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    try {
+      const results = await sendVerificationNotification(email, phone, companyName, isVerified);
       res.json(results);
     } catch (error) {
       console.error('Notification Error:', error);
