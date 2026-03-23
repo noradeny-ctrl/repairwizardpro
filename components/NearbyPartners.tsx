@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { MapPin, ExternalLink, ShieldCheck, Navigation } from 'lucide-react';
 import { Partner, Coordinates } from '../types';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 interface NearbyPartnersProps {
   partners: Partner[];
@@ -23,6 +24,7 @@ const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: numbe
 };
 
 export const NearbyPartners: React.FC<NearbyPartnersProps> = ({ partners, userLocation, isRTL }) => {
+  const { t } = useTranslation();
   const sortedPartners = useMemo(() => {
     if (!userLocation) return partners;
 
@@ -109,7 +111,7 @@ export const NearbyPartners: React.FC<NearbyPartnersProps> = ({ partners, userLo
                 </div>
 
                 <a 
-                  href={partner.contact.whatsapp_link}
+                  href={`${partner.contact.whatsapp_link}${partner.contact.whatsapp_link.includes('?') ? '&' : '?'}text=${encodeURIComponent(t('common.whatsapp_message', 'Hello, I found you on RepairWizard and I need help with my car.'))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"

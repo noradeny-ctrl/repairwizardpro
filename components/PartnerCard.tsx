@@ -38,7 +38,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, mode, hideImage }) =
       </div>
 
       <a 
-        href={partner.contact.whatsapp_link} 
+        href={`${partner.contact.whatsapp_link}${partner.contact.whatsapp_link.includes('?') ? '&' : '?'}text=${encodeURIComponent(t('common.whatsapp_message', 'Hello, I found you on RepairWizard and I need help with my car.'))}`}
         target="_blank" 
         rel="noopener noreferrer"
         className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 transition-all rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-900/20 active:scale-95"

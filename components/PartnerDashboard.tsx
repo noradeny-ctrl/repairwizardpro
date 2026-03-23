@@ -9,15 +9,17 @@ interface PartnerDashboardProps {
   onClose: () => void;
 }
 
-export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) => {
+export const UserDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) => {
   const { t } = useTranslation();
-  const { user } = useFirebase();
+  const { user, userProfile, isAdmin } = useFirebase();
   const [scans, setScans] = useState<any[]>([]);
   const [repairs, setRepairs] = useState<any[]>([]);
   const [statusHistory, setStatusHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'scans' | 'repairs' | 'history'>('scans');
+
+  const isPartner = userProfile?.role === 'partner' || isAdmin;
 
   useEffect(() => {
     if (!user) return;
@@ -43,13 +45,15 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
         const repairsSnapshot = await getDocs(repairsQuery);
         setRepairs(repairsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        // Fetch Status History
-        const historyQuery = query(
-          collection(db, 'partners', user.uid, 'statusHistory'),
-          orderBy('timestamp', 'desc')
-        );
-        const historySnapshot = await getDocs(historyQuery);
-        setStatusHistory(historySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        // Fetch Status History (Only for partners or admins)
+        if (isPartner) {
+          const historyQuery = query(
+            collection(db, 'partners', user.uid, 'statusHistory'),
+            orderBy('timestamp', 'desc')
+          );
+          const historySnapshot = await getDocs(historyQuery);
+          setStatusHistory(historySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
       } catch (error) {
         try {
           handleFirestoreError(error, OperationType.LIST, 'scans/repairs');
@@ -61,8 +65,8 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
       }
     };
 
-    fetchData();
-  }, [user]);
+    fetchData().catch(err => console.error("Failed to fetch dashboard data:", err));
+  }, [user, isPartner]);
 
   const handleDelete = async (collectionName: string, id: string) => {
     if (!window.confirm(t('common.confirm_delete', 'Are you sure you want to delete this record?'))) return;
@@ -104,7 +108,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
           <div>
             <h2 className="text-2xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
               <HistoryIcon className="text-cyan-400" />
-              {t('common.partner_dashboard', 'Partner Dashboard')}
+              {t('common.history_dashboard', 'History Dashboard')}
             </h2>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mt-1">
               {t('common.manage_history', 'Manage your diagnostic & repair history')}
@@ -134,13 +138,15 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
             {t('common.repair_history', 'Repair History')}
             {activeTab === 'repairs' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}
           </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`pb-4 px-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'history' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
-          >
-            {t('common.status_history', 'Status History')}
-            {activeTab === 'history' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}
-          </button>
+          {isPartner && (
+            <button 
+              onClick={() => setActiveTab('history')}
+              className={`pb-4 px-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'history' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+            >
+              {t('common.status_history', 'Status History')}
+              {activeTab === 'history' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}
+            </button>
+          )}
         </div>
 
         {/* Content */}

@@ -15,7 +15,7 @@ import ExportTerminal from './components/ExportTerminal';
 import ProtocolInitialization from './components/ProtocolInitialization';
 import OBDAnalyzer from './components/OBDAnalyzer';
 import { AdminDashboard } from './components/AdminDashboard';
-import { PartnerDashboard } from './components/PartnerDashboard';
+import { UserDashboard } from './components/PartnerDashboard';
 import { SettingsModal } from './components/SettingsModal';
 import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
 import { AuthModal } from './components/AuthModal';
@@ -191,7 +191,7 @@ const App: React.FC = () => {
   const [detectedOBD, setDetectedOBD] = useState<string | null>(null);
   const [obdInput, setObdInput] = useState('');
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
+  const [isHistoryDashboardOpen, setIsHistoryDashboardOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [welcomeToast, setWelcomeToast] = useState<{ show: boolean; name: string }>({ show: false, name: '' });
   const [filterCity, setFilterCity] = useState<string>('all');
@@ -223,7 +223,7 @@ const App: React.FC = () => {
         }
       }
     };
-    testConnection();
+    testConnection().catch(err => console.error("Initial connection test failed:", err));
   }, []);
 
   useEffect(() => {
@@ -707,11 +707,11 @@ const App: React.FC = () => {
               </button>
             )}
 
-            {(userProfile?.role === 'partner' || isAdmin) && (
+            {user && (
               <button 
-                onClick={() => setIsPartnerDashboardOpen(true)}
+                onClick={() => setIsHistoryDashboardOpen(true)}
                 className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-emerald-500/20 group"
-                title="Partner Dashboard"
+                title="History"
               >
                 <HistoryIcon size={14} className="group-hover:scale-110 transition-transform" />
                 <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">History</span>
@@ -737,9 +737,9 @@ const App: React.FC = () => {
           />
         )}
 
-        {isPartnerDashboardOpen && (
-          <PartnerDashboard 
-            onClose={() => setIsPartnerDashboardOpen(false)} 
+        {isHistoryDashboardOpen && (
+          <UserDashboard 
+            onClose={() => setIsHistoryDashboardOpen(false)} 
           />
         )}
 

@@ -105,9 +105,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   });
 
   useEffect(() => {
-    fetchApplications();
-    fetchPartners();
-    fetchUsers();
+    fetchApplications().catch(err => console.error("Failed to fetch applications:", err));
+    fetchPartners().catch(err => console.error("Failed to fetch partners:", err));
+    fetchUsers().catch(err => console.error("Failed to fetch users:", err));
   }, []);
 
   const fetchUsers = async () => {

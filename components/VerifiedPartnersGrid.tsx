@@ -109,7 +109,7 @@ export const VerifiedPartnersGrid: React.FC<VerifiedPartnersGridProps> = ({ live
               </div>
               
               <a 
-                href={partner.contact.whatsapp_link}
+                href={`${partner.contact.whatsapp_link}${partner.contact.whatsapp_link.includes('?') ? '&' : '?'}text=${encodeURIComponent(t('common.whatsapp_message', 'Hello, I found you on RepairWizard and I need help with my car.'))}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
