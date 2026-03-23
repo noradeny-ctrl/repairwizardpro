@@ -662,7 +662,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {isAdminDashboardOpen && (
+        {isAdmin && isAdminDashboardOpen && (
           <AdminDashboard 
             onClose={() => setIsAdminDashboardOpen(false)} 
           />

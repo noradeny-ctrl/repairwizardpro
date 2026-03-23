@@ -31,6 +31,7 @@ import {
   getDocs, 
   getDoc,
   updateDoc, 
+  deleteDoc,
   doc, 
   setDoc,
   query, 
@@ -64,12 +65,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'applications' | 'partners' | 'users'>('applications');
+  const [activeTab, setActiveTab] = useState<'overview' | 'applications' | 'partners' | 'users'>('overview');
   const [partners, setPartners] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
   const [isAddingPartner, setIsAddingPartner] = useState(false);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+
+  const stats = {
+    totalUsers: users.length,
+    activePartners: partners.length,
+    pendingApps: applications.filter(a => a.status === 'pending').length,
+    approvedApps: applications.filter(a => a.status === 'approved').length
+  };
 
   const [newPartner, setNewPartner] = useState({
     business_name: '',
@@ -197,7 +206,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       await fetchApplications();
       await fetchPartners();
     } catch (error) {
-      console.error("Error approving application:", error);
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'partnerApplications');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     } finally {
       setProcessingId(null);
     }
@@ -210,7 +223,37 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       await fetchPartners();
       setEditingPartnerId(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'partners');
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'partners');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
+    }
+  };
+
+  const handleDeletePartner = async (partnerId: string) => {
+    try {
+      await deleteDoc(doc(db, 'partners', partnerId));
+      await fetchPartners();
+    } catch (error) {
+      try {
+        handleFirestoreError(error, OperationType.DELETE, 'partners');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      await fetchUsers();
+    } catch (error) {
+      try {
+        handleFirestoreError(error, OperationType.DELETE, 'users');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     }
   };
 
@@ -316,8 +359,38 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     }
   };
 
-  const filteredApps = applications.filter(app => 
-    filter === 'all' ? true : app.status === filter
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { role: newRole });
+      await fetchUsers();
+    } catch (error) {
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'users');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
+    }
+  };
+
+  const filteredApps = applications.filter(app => {
+    const matchesFilter = filter === 'all' ? true : app.status === filter;
+    const matchesSearch = app.companyName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         app.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         app.email.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const filteredPartners = partners.filter(p => 
+    p.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.location?.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.contact?.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredUsers = users.filter(u => 
+    (u.displayName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (u.role || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -344,6 +417,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           </div>
 
           <div className="flex items-center gap-2 bg-black/40 p-1 rounded-xl border border-white/5">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                activeTab === 'overview' ? 'bg-cyan-500 text-black' : 'text-slate-500 hover:text-white'
+              }`}
+            >
+              Overview
+            </button>
             <button
               onClick={() => setActiveTab('applications')}
               className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -381,19 +462,41 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           )}
         </div>
 
-        {activeTab === 'applications' && (
-          <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/5 self-start">
-            {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
-                  filter === f ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'
-                }`}
-              >
-                {f}
-              </button>
-            ))}
+        {activeTab !== 'overview' && (
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            {activeTab === 'applications' && (
+              <div className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/5 self-start">
+                {(['pending', 'approved', 'rejected', 'all'] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFilter(f)}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                      filter === f ? 'bg-white/10 text-white' : 'text-slate-500 hover:text-white'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="relative flex-1 max-w-md w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+              <input 
+                type="text"
+                placeholder={`Search ${activeTab}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-black/20 border border-white/5 rounded-xl py-2 pl-10 pr-4 text-xs text-white focus:border-cyan-500/50 outline-none transition-all"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
           </div>
         )}
       </header>
@@ -413,6 +516,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
             <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Accessing Secure Records...</p>
+          </div>
+        ) : activeTab === 'overview' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Users', value: stats.totalUsers, icon: <User className="text-cyan-400" />, color: 'cyan' },
+              { label: 'Active Partners', value: stats.activePartners, icon: <ShieldCheck className="text-emerald-400" />, color: 'emerald' },
+              { label: 'Pending Apps', value: stats.pendingApps, icon: <Clock className="text-amber-400" />, color: 'amber' },
+              { label: 'Approved Apps', value: stats.approvedApps, icon: <CheckCircle2 className="text-blue-400" />, color: 'blue' }
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 hover:border-white/10 transition-all"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-3 rounded-2xl bg-${stat.color}-500/10 border border-${stat.color}-500/20`}>
+                    {stat.icon}
+                  </div>
+                </div>
+                <h3 className="text-2xl font-black text-white mb-1">{stat.value}</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{stat.label}</p>
+              </motion.div>
+            ))}
           </div>
         ) : activeTab === 'applications' ? (
           filteredApps.length === 0 ? (
@@ -658,11 +786,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
             )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {partners.filter(p => p.is_verified !== false).map((partner) => (
+              {filteredPartners.map((partner) => (
                 <motion.div
                   key={partner.id}
                   layout
-                  className="bg-slate-900/40 border border-white/5 rounded-3xl p-6 hover:border-cyan-500/30 transition-all group"
+                  className={`bg-slate-900/40 border rounded-3xl p-6 transition-all group ${partner.is_verified ? 'border-white/5 hover:border-cyan-500/30' : 'border-red-500/20 opacity-75'}`}
                 >
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
@@ -676,10 +804,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       <div>
                         <h3 className="font-black text-white uppercase tracking-tight">{partner.business_name}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[8px] font-black bg-emerald-500/10 px-2 py-0.5 rounded text-emerald-400 uppercase tracking-widest border border-emerald-500/20 flex items-center gap-1">
+                          <button 
+                            onClick={() => handleUpdatePartner(partner.id, { is_verified: !partner.is_verified })}
+                            className={`text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-widest border flex items-center gap-1 transition-all ${
+                              partner.is_verified 
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                                : 'bg-red-500/10 text-red-400 border-red-500/20'
+                            }`}
+                          >
                             <ShieldCheck size={8} />
-                            Permanent Member
-                          </span>
+                            {partner.is_verified ? 'Verified Member' : 'Unverified'}
+                          </button>
                           <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
                             {partner.location?.city}
                           </span>
@@ -700,6 +835,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         title="Edit Partner"
                       >
                         <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeletePartner(partner.id)}
+                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                        title="Delete Partner"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
@@ -854,7 +996,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         ) : (
           <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <motion.div
                   key={u.id}
                   layout
@@ -872,11 +1014,26 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       <div>
                         <h3 className="font-black text-white uppercase tracking-tight">{u.displayName || 'No Name'}</h3>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
-                            {u.role}
-                          </span>
+                          <select 
+                            value={u.role || 'user'}
+                            onChange={(e) => handleUpdateUserRole(u.id, e.target.value)}
+                            className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest border border-white/10 outline-none focus:border-cyan-500/50"
+                          >
+                            <option value="user">User</option>
+                            <option value="partner">Partner</option>
+                            <option value="admin">Admin</option>
+                          </select>
                         </div>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleDeleteUser(u.id)}
+                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
+                        title="Delete User"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
                   <div className="space-y-2">
