@@ -39,7 +39,10 @@ import {
   orderBy,
   Timestamp,
   handleFirestoreError,
-  OperationType
+  OperationType,
+  addDoc,
+  serverTimestamp,
+  auth
 } from '../firebase';
 import { useTranslation } from 'react-i18next';
 
@@ -232,16 +235,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       const partnerRef = doc(db, 'partners', partnerId);
       await updateDoc(partnerRef, data);
       
-      // If verification status changed, notify the partner
+      // If verification status changed, notify the partner and log it
       if ('is_verified' in data) {
         const partner = partners.find(p => p.id === partnerId);
         if (partner) {
+          // 1. Send notification
           await sendNotification('verify', {
             email: partner.contact?.email,
             phone: partner.contact?.phone,
             companyName: partner.business_name,
             isVerified: data.is_verified
           });
+
+          // 2. Log status change
+          try {
+            const historyRef = collection(db, 'partners', partnerId, 'statusHistory');
+            await addDoc(historyRef, {
+              status: data.is_verified,
+              adminEmail: auth.currentUser?.email || 'Unknown Admin',
+              adminId: auth.currentUser?.uid || 'unknown',
+              timestamp: serverTimestamp(),
+              reason: data.is_verified ? 'Verified by Admin' : 'Unverified by Admin'
+            });
+          } catch (logErr) {
+            console.error("Error logging status change:", logErr);
+          }
         }
       }
 
@@ -367,7 +385,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
       await fetchApplications();
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'partnerApplications');
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'partnerApplications');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     } finally {
       setProcessingId(null);
     }

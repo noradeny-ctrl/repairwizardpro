@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, History as HistoryIcon, Activity, Wrench, Clock, ChevronRight, Search, Filter, Trash2, ExternalLink, AlertCircle } from 'lucide-react';
+import { X, History as HistoryIcon, Activity, Wrench, Clock, ChevronRight, Search, Filter, Trash2, ExternalLink, AlertCircle, ShieldCheck } from 'lucide-react';
 import { db, collection, query, where, getDocs, orderBy, deleteDoc, doc, handleFirestoreError, OperationType } from '../firebase';
 import { useFirebase } from './FirebaseProvider';
 import { useTranslation } from 'react-i18next';
@@ -14,9 +14,10 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
   const { user } = useFirebase();
   const [scans, setScans] = useState<any[]>([]);
   const [repairs, setRepairs] = useState<any[]>([]);
+  const [statusHistory, setStatusHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'scans' | 'repairs'>('scans');
+  const [activeTab, setActiveTab] = useState<'scans' | 'repairs' | 'history'>('scans');
 
   useEffect(() => {
     if (!user) return;
@@ -41,6 +42,14 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
         );
         const repairsSnapshot = await getDocs(repairsQuery);
         setRepairs(repairsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+
+        // Fetch Status History
+        const historyQuery = query(
+          collection(db, 'partners', user.uid, 'statusHistory'),
+          orderBy('timestamp', 'desc')
+        );
+        const historySnapshot = await getDocs(historyQuery);
+        setStatusHistory(historySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
         try {
           handleFirestoreError(error, OperationType.LIST, 'scans/repairs');
@@ -125,6 +134,13 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
             {t('common.repair_history', 'Repair History')}
             {activeTab === 'repairs' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}
           </button>
+          <button 
+            onClick={() => setActiveTab('history')}
+            className={`pb-4 px-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === 'history' ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+          >
+            {t('common.status_history', 'Status History')}
+            {activeTab === 'history' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" />}
+          </button>
         </div>
 
         {/* Content */}
@@ -183,7 +199,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
                 </p>
               </div>
             )
-          ) : (
+          ) : activeTab === 'repairs' ? (
             repairs.length > 0 ? (
               <div className="space-y-4">
                 {repairs.map((repair) => (
@@ -227,6 +243,45 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
                 <HistoryIcon size={60} className="text-slate-700" />
                 <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
                   {t('common.no_repairs_found', 'No repair history found')}
+                </p>
+              </div>
+            )
+          ) : (
+            statusHistory.length > 0 ? (
+              <div className="space-y-4">
+                {statusHistory.map((item) => (
+                  <div key={item.id} className="bg-white/5 border border-white/5 rounded-2xl p-6 hover:border-cyan-500/30 transition-all">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.status ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                          <ShieldCheck size={20} />
+                        </div>
+                        <div>
+                          <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                            {item.timestamp?.toDate ? item.timestamp.toDate().toLocaleString() : 'Just now'}
+                          </div>
+                          <h3 className="text-sm font-bold text-white uppercase tracking-tight">
+                            {item.status ? 'Verified' : 'Unverified'}
+                          </h3>
+                        </div>
+                      </div>
+                      <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">
+                          Admin: {item.adminEmail}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed italic">
+                      "{item.reason || 'No reason provided'}"
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-40">
+                <HistoryIcon size={60} className="text-slate-700" />
+                <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">
+                  {t('common.no_status_history', 'No status history found')}
                 </p>
               </div>
             )

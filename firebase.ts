@@ -11,7 +11,7 @@ import {
   updateProfile,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, Timestamp, getDocFromServer, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, limit, onSnapshot, Timestamp, getDocFromServer, updateDoc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import firebaseConfig from './firebase-applet-config.json';
 
 // Initialize Firebase
@@ -101,6 +101,8 @@ export {
   Timestamp,
   updateDoc,
   deleteDoc,
+  addDoc,
+  serverTimestamp,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,

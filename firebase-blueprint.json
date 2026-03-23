@@ -57,6 +57,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "issueDescription", "aiDiagnosis", "status", "createdAt"]
+    },
+    "StatusHistory": {
+      "title": "Status History",
+      "description": "Logs changes to a partner's verification status.",
+      "type": "object",
+      "properties": {
+        "status": { "type": "boolean", "description": "The new verification status." },
+        "adminEmail": { "type": "string", "format": "email" },
+        "adminId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "reason": { "type": "string" }
+      },
+      "required": ["status", "adminEmail", "adminId", "timestamp"]
     }
   },
   "firestore": {
@@ -75,6 +88,10 @@
     "/repairs/{repairId}": {
       "schema": "Repair",
       "description": "General repair diagnostic logs."
+    },
+    "/partners/{partnerId}/statusHistory/{historyId}": {
+      "schema": "StatusHistory",
+      "description": "Logs of verification status changes."
     }
   }
 }

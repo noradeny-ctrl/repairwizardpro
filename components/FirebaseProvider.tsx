@@ -114,7 +114,12 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Update local state
       setUserProfile((prev: any) => ({ ...prev, ...data }));
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users');
+      try {
+        handleFirestoreError(error, OperationType.UPDATE, 'users');
+      } catch (fsErr: any) {
+        console.error("Update Profile Error:", fsErr.message);
+        throw fsErr; // Re-throw the formatted error for UI to handle if needed
+      }
     }
   };
 
@@ -156,7 +161,11 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             setIsAdmin(newProfile.role === 'admin');
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.GET, 'users');
+          try {
+            handleFirestoreError(error, OperationType.GET, 'users');
+          } catch (fsErr: any) {
+            console.error("Firestore Auth Sync Error:", fsErr.message);
+          }
         }
       } else {
         setUserProfile(null);
