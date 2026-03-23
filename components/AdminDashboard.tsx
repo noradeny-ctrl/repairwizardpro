@@ -59,6 +59,13 @@ interface AdminDashboardProps {
   onClose: () => void;
 }
 
+const KURDISTAN_CITIES = [
+  { name: 'Erbil', lat: 36.1901, lng: 44.0091 },
+  { name: 'Sulaymaniyah', lat: 35.5558, lng: 45.4329 },
+  { name: 'Duhok', lat: 36.8679, lng: 42.9489 },
+  { name: 'Halabja', lat: 35.1778, lng: 45.9861 }
+];
+
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -760,12 +767,20 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">City</label>
-                    <input 
-                      type="text"
+                    <select 
                       value={newPartner.city}
-                      onChange={(e) => setNewPartner({...newPartner, city: e.target.value})}
+                      onChange={(e) => {
+                        const city = KURDISTAN_CITIES.find(c => c.name === e.target.value);
+                        if (city) {
+                          setNewPartner({...newPartner, city: city.name, lat: city.lat, lng: city.lng});
+                        }
+                      }}
                       className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
-                    />
+                    >
+                      {KURDISTAN_CITIES.map(city => (
+                        <option key={city.name} value={city.name} className="bg-slate-900">{city.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Phone Number</label>
