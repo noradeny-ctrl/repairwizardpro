@@ -166,6 +166,9 @@ const App: React.FC = () => {
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [filterCity, setFilterCity] = useState<string>('all');
+  const [filterSpecialty, setFilterSpecialty] = useState<string>('all');
+  const [filterService, setFilterService] = useState<string>('all');
 
   useEffect(() => {
     const testConnection = async (retries = 3) => {
@@ -258,6 +261,19 @@ const App: React.FC = () => {
   const resetApp = useCallback(() => {
     setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, userInput: '', error: undefined }));
   }, []);
+
+  const uniqueCities = useMemo(() => ['all', ...new Set(livePartners.map(p => p.location.city))], [livePartners]);
+  const uniqueSpecialties = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.specialties))], [livePartners]);
+  const uniqueServices = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.services_offered))], [livePartners]);
+
+  const filteredLivePartners = useMemo(() => {
+    return livePartners.filter(p => {
+      const matchesCity = filterCity === 'all' || p.location.city === filterCity;
+      const matchesSpecialty = filterSpecialty === 'all' || p.specialties.includes(filterSpecialty);
+      const matchesService = filterService === 'all' || p.services_offered.includes(filterService);
+      return matchesCity && matchesSpecialty && matchesService;
+    });
+  }, [livePartners, filterCity, filterSpecialty, filterService]);
 
   const setInitialMode = useCallback((mode: RegionMode) => {
     const langMap: Record<RegionMode, string> = {
@@ -364,8 +380,15 @@ const App: React.FC = () => {
   }, []);
 
   const nearbyPartners = useMemo(() => {
-    if (!userLocation) return [];
-    return livePartners
+    // Start with filtered partners
+    let basePartners = filteredLivePartners;
+    
+    if (!userLocation) {
+      // If no location, return filtered partners without distance
+      return basePartners.map(p => ({ ...p, distance: undefined }));
+    }
+
+    return basePartners
       .filter(p => p.location?.coordinates?.latitude !== undefined && p.location?.coordinates?.longitude !== undefined)
       .map(p => ({ 
         ...p, 
@@ -378,7 +401,7 @@ const App: React.FC = () => {
       }))
       .filter(p => (p.distance ?? 999) <= 65)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0));
-  }, [userLocation, livePartners]);
+  }, [userLocation, filteredLivePartners]);
 
   const recommendedPartners = useMemo(() => {
     if (!nearbyPartners.length || !state.result) return [];
@@ -921,8 +944,46 @@ const App: React.FC = () => {
             </div>
           </div>
           
-          <div className="mt-8">
-            <VerifiedPartnersGrid livePartners={livePartners} />
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-wrap gap-2 px-2">
+              <div className="flex-1 min-w-[120px]">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.city', 'City')}</label>
+                <select 
+                  value={filterCity}
+                  onChange={(e) => setFilterCity(e.target.value)}
+                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  {uniqueCities.map(city => (
+                    <option key={city} value={city} className="bg-slate-900">{city === 'all' ? t('common.all_cities', 'All Cities') : city}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 min-w-[120px]">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.specialty', 'Specialty')}</label>
+                <select 
+                  value={filterSpecialty}
+                  onChange={(e) => setFilterSpecialty(e.target.value)}
+                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  {uniqueSpecialties.map(spec => (
+                    <option key={spec} value={spec} className="bg-slate-900">{spec === 'all' ? t('common.all_specialties', 'All Specialties') : spec}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1 min-w-[120px]">
+                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.service', 'Service')}</label>
+                <select 
+                  value={filterService}
+                  onChange={(e) => setFilterService(e.target.value)}
+                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
+                >
+                  {uniqueServices.map(service => (
+                    <option key={service} value={service} className="bg-slate-900">{service === 'all' ? t('common.all_services', 'All Services') : service}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <VerifiedPartnersGrid livePartners={filteredLivePartners} />
           </div>
 
           <div className="h-40" />
