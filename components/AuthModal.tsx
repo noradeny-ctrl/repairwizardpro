@@ -30,10 +30,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     try {
       if (view === 'login') {
         await loginWithEmail(email, password);
-        onClose();
+        setSuccess("Login successful! Welcome back.");
+        setTimeout(onClose, 1500);
       } else if (view === 'signup') {
         await registerWithEmail(email, password, name);
-        onClose();
+        setSuccess("Account created successfully! Welcome to the Wizard.");
+        setTimeout(onClose, 1500);
       } else if (view === 'forgot-password') {
         await resetPassword(email);
         setSuccess("Password reset email sent! Please check your inbox.");
@@ -64,7 +66,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
     setError(null);
     try {
       await login();
-      onClose();
+      setSuccess("Google login successful!");
+      setTimeout(onClose, 1500);
     } catch (err: any) {
       console.error("Google login error:", err);
       setError(err.message || "Google login failed");

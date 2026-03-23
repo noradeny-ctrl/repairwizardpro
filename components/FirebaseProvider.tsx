@@ -146,15 +146,21 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const profile = userDoc.data();
             setUserProfile(profile);
             setIsAdmin(profile.role === 'admin' || firebaseUser.email === 'noradeny@gmail.com');
+            
+            // Update last login
+            await updateDoc(userDocRef, {
+              lastLogin: Timestamp.now()
+            }).catch(e => console.error("Failed to update last login:", e));
           } else {
             // Create new profile
             const newProfile = {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
+              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Wizard User',
               photoURL: firebaseUser.photoURL,
               role: firebaseUser.email === 'noradeny@gmail.com' ? 'admin' : 'user',
               createdAt: Timestamp.now(),
+              lastLogin: Timestamp.now(),
             };
             await setDoc(userDocRef, newProfile);
             setUserProfile(newProfile);

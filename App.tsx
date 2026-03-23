@@ -23,7 +23,34 @@ import partnersData, { fetchActivePartners } from './partners';
 import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
 import { collection, addDoc, doc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { useFirebase } from './components/FirebaseProvider';
-import { LogIn, LogOut, User as UserIcon, Settings } from 'lucide-react';
+import { LogIn, LogOut, User as UserIcon, Settings, CheckCircle2 } from 'lucide-react';
+
+const Toast = memo(({ show, name, onClose }: { show: boolean; name: string; onClose: () => void }) => (
+  <AnimatePresence>
+    {show && (
+      <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-4 bg-[#0d1117] border border-cyan-500/30 px-6 py-4 rounded-[2rem] shadow-2xl shadow-cyan-500/10 backdrop-blur-xl"
+      >
+        <div className="w-10 h-10 bg-cyan-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/20">
+          <CheckCircle2 className="text-cyan-400" size={20} />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Welcome Back</span>
+          <span className="text-sm font-black text-white uppercase tracking-tight">{name}</span>
+        </div>
+        <button 
+          onClick={onClose}
+          className="ml-4 p-2 hover:bg-white/5 rounded-full transition-colors text-slate-500 hover:text-white"
+        >
+          <X size={16} />
+        </button>
+      </motion.div>
+    )}
+  </AnimatePresence>
+));
 
 const KurdishFlag = memo(({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
@@ -166,6 +193,7 @@ const App: React.FC = () => {
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
   const [isPartnerDashboardOpen, setIsPartnerDashboardOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [welcomeToast, setWelcomeToast] = useState<{ show: boolean; name: string }>({ show: false, name: '' });
   const [filterCity, setFilterCity] = useState<string>('all');
   const [filterSpecialty, setFilterSpecialty] = useState<string>('all');
   const [filterService, setFilterService] = useState<string>('all');
@@ -265,6 +293,13 @@ const App: React.FC = () => {
   const uniqueCities = useMemo(() => ['all', ...new Set(livePartners.map(p => p.location.city))], [livePartners]);
   const uniqueSpecialties = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.specialties))], [livePartners]);
   const uniqueServices = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.services_offered))], [livePartners]);
+
+  useEffect(() => {
+    if (userProfile && !welcomeToast.show && !loading) {
+      setWelcomeToast({ show: true, name: userProfile.displayName || 'Wizard' });
+      setTimeout(() => setWelcomeToast(prev => ({ ...prev, show: false })), 5000);
+    }
+  }, [userProfile, loading]);
 
   const filteredLivePartners = useMemo(() => {
     return livePartners.filter(p => {
@@ -567,6 +602,11 @@ const App: React.FC = () => {
             </button>
           ))}
         </div>
+        <Toast 
+          show={welcomeToast.show} 
+          name={welcomeToast.name} 
+          onClose={() => setWelcomeToast(prev => ({ ...prev, show: false }))} 
+        />
       </div>
     );
   }
@@ -574,6 +614,12 @@ const App: React.FC = () => {
   return (
       <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
         <SunBackground />
+        
+        <Toast 
+          show={welcomeToast.show} 
+          name={welcomeToast.name} 
+          onClose={() => setWelcomeToast(prev => ({ ...prev, show: false }))} 
+        />
         
         <header className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50 safe-area-pt">
           <div 
