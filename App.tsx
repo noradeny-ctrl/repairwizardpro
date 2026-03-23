@@ -222,7 +222,13 @@ const App: React.FC = () => {
     };
     
     await addDoc(collection(db, 'repairs'), repairData)
-      .catch(err => handleFirestoreError(err, OperationType.CREATE, 'repairs'));
+      .catch(err => {
+        try {
+          handleFirestoreError(err, OperationType.CREATE, 'repairs');
+        } catch (fsErr: any) {
+          setState(prev => ({ ...prev, error: fsErr.message, errorCategory: 'generic' }));
+        }
+      });
   };
 
   const startAnalysis = useCallback(async () => {

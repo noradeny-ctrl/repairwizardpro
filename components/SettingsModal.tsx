@@ -47,7 +47,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         }
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, 'partnerApplications/partners');
+      try {
+        handleFirestoreError(error, OperationType.GET, 'partnerApplications/partners');
+      } catch (fsErr: any) {
+        setMessage({ type: 'error', text: fsErr.message });
+      }
     } finally {
       setFetchingData(false);
     }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, History as HistoryIcon, Activity, Wrench, Clock, ChevronRight, Search, Filter, Trash2, ExternalLink } from 'lucide-react';
+import { X, History as HistoryIcon, Activity, Wrench, Clock, ChevronRight, Search, Filter, Trash2, ExternalLink, AlertCircle } from 'lucide-react';
 import { db, collection, query, where, getDocs, orderBy, deleteDoc, doc, handleFirestoreError, OperationType } from '../firebase';
 import { useFirebase } from './FirebaseProvider';
 import { useTranslation } from 'react-i18next';
@@ -15,6 +15,7 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
   const [scans, setScans] = useState<any[]>([]);
   const [repairs, setRepairs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'scans' | 'repairs'>('scans');
 
   useEffect(() => {
@@ -41,7 +42,11 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
         const repairsSnapshot = await getDocs(repairsQuery);
         setRepairs(repairsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       } catch (error) {
-        handleFirestoreError(error, OperationType.LIST, 'scans/repairs');
+        try {
+          handleFirestoreError(error, OperationType.LIST, 'scans/repairs');
+        } catch (fsErr: any) {
+          setError(fsErr.message);
+        }
       } finally {
         setLoading(false);
       }
@@ -61,7 +66,11 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
         setRepairs(prev => prev.filter(r => r.id !== id));
       }
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, collectionName);
+      try {
+        handleFirestoreError(error, OperationType.DELETE, collectionName);
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     }
   };
 
@@ -120,6 +129,15 @@ export const PartnerDashboard: React.FC<PartnerDashboardProps> = ({ onClose }) =
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-8 space-y-4 hide-scrollbar">
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400 mb-4">
+              <AlertCircle size={18} />
+              <p className="text-xs font-bold uppercase tracking-widest">{error}</p>
+              <button onClick={() => setError(null)} className="ml-auto text-red-400/50 hover:text-red-400">
+                <X size={14} />
+              </button>
+            </div>
+          )}
           {loading ? (
             <div className="flex flex-col items-center justify-center h-full space-y-4">
               <Activity className="text-cyan-400 animate-spin" size={40} />

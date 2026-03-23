@@ -71,7 +71,13 @@ export const FirebaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         role: userCredential.user.email === 'noradeny@gmail.com' ? 'admin' : 'user',
         createdAt: Timestamp.now(),
       };
-      await setDoc(userDocRef, newProfile).catch(err => handleFirestoreError(err, OperationType.CREATE, 'users'));
+      await setDoc(userDocRef, newProfile).catch(err => {
+        try {
+          handleFirestoreError(err, OperationType.CREATE, 'users');
+        } catch (fsErr: any) {
+          console.error("Firestore Error:", fsErr.message);
+        }
+      });
       setUserProfile(newProfile);
       setIsAdmin(newProfile.role === 'admin');
     } catch (error: any) {

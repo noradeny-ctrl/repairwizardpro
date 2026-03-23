@@ -5,6 +5,7 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   XCircle, 
+  AlertCircle,
   Clock, 
   Mail, 
   Phone, 
@@ -61,6 +62,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const { t } = useTranslation();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'applications' | 'partners' | 'users'>('applications');
   const [partners, setPartners] = useState<any[]>([]);
@@ -68,7 +70,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
   const [isAddingPartner, setIsAddingPartner] = useState(false);
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [newPartner, setNewPartner] = useState({
     business_name: '',
@@ -80,7 +81,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
     whatsapp_link: '',
     profile_image: 'https://picsum.photos/seed/garage/400/300',
     description: '',
-    subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     lat: 36.1901,
     lng: 44.0091
   });
@@ -101,7 +101,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
       setUsers(u);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'users');
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'users');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     }
   };
 
@@ -116,7 +120,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
       setApplications(apps);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'partnerApplications');
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'partnerApplications');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -132,7 +140,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       });
       setPartners(p);
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, 'partners');
+      try {
+        handleFirestoreError(error, OperationType.LIST, 'partners');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     }
   };
 
@@ -147,7 +159,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       if (app.userId) {
         const userRef = doc(db, 'users', app.userId);
         await updateDoc(userRef, { role: 'partner' })
-          .catch(err => handleFirestoreError(err, OperationType.UPDATE, 'users'));
+          .catch(err => {
+            try {
+              handleFirestoreError(err, OperationType.UPDATE, 'users');
+            } catch (fsErr: any) {
+              setError(fsErr.message);
+            }
+          });
       }
 
       // 3. Create partner entry
@@ -169,8 +187,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         policy: {
           fair_price_guarantee: true,
           description: "Verified Partner"
-        },
-        subscription_end_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 1 year
+        }
       });
 
       // 3. Send Email (Simulated)
@@ -223,8 +240,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         policy: {
           fair_price_guarantee: true,
           description: newPartner.description || "Verified Partner"
-        },
-        subscription_end_date: newPartner.subscription_expiry
+        }
       });
       setIsAddingPartner(false);
       setNewPartner({
@@ -237,7 +253,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         whatsapp_link: '',
         profile_image: 'https://picsum.photos/seed/garage/400/300',
         description: '',
-        subscription_expiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         lat: 36.1901,
         lng: 44.0091
       });
@@ -246,63 +261,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
       console.error("Error adding partner:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleRemoveVerifiedUser = async (userId: string) => {
-    try {
-      // 1. Revoke user role
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, { role: 'user' });
-
-      // 2. Find their partner applications
-      const q = query(collection(db, 'partnerApplications'), where('userId', '==', userId));
-      const snapshot = await getDocs(q);
-      
-      for (const appDoc of snapshot.docs) {
-        // Reject application
-        await updateDoc(doc(db, 'partnerApplications', appDoc.id), { status: 'rejected' });
-        
-        // Soft delete partner profile
-        const partnerRef = doc(db, 'partners', appDoc.id);
-        await updateDoc(partnerRef, { is_verified: false }).catch(() => {});
-      }
-
-      await fetchUsers();
-      await fetchPartners();
-      await fetchApplications();
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'users');
-    }
-  };
-
-  const handleDeletePartner = async (partnerId: string) => {
-    try {
-      // 1. Soft delete the partner
-      const partnerRef = doc(db, 'partners', partnerId);
-      await updateDoc(partnerRef, { is_verified: false });
-
-      // 2. Check if there's a corresponding application to revoke the user's role
-      const appRef = doc(db, 'partnerApplications', partnerId);
-      const appSnap = await getDoc(appRef);
-      
-      if (appSnap.exists()) {
-        const appData = appSnap.data();
-        
-        // Update application status
-        await updateDoc(appRef, { status: 'rejected' });
-        
-        // Revoke user role if userId exists
-        if (appData.userId) {
-          const userRef = doc(db, 'users', appData.userId);
-          await updateDoc(userRef, { role: 'user' });
-        }
-      }
-
-      await fetchPartners();
-      setConfirmDeleteId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, 'partners');
     }
   };
 
@@ -442,6 +400,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
 
       {/* Content */}
       <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-center gap-3 text-red-400">
+            <AlertCircle size={18} />
+            <p className="text-xs font-bold uppercase tracking-widest">{error}</p>
+            <button onClick={() => setError(null)} className="ml-auto text-red-400/50 hover:text-red-400">
+              <X size={14} />
+            </button>
+          </div>
+        )}
         {loading ? (
           <div className="flex flex-col items-center justify-center h-64 space-y-4">
             <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
@@ -649,15 +616,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Subscription Expiry</label>
-                    <input 
-                      type="date"
-                      value={newPartner.subscription_expiry}
-                      onChange={(e) => setNewPartner({...newPartner, subscription_expiry: e.target.value})}
-                      className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-sm text-white focus:border-cyan-500 outline-none transition-all"
-                    />
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Latitude</label>
@@ -718,11 +676,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       <div>
                         <h3 className="font-black text-white uppercase tracking-tight">{partner.business_name}</h3>
                         <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[8px] font-black bg-emerald-500/10 px-2 py-0.5 rounded text-emerald-400 uppercase tracking-widest border border-emerald-500/20 flex items-center gap-1">
+                            <ShieldCheck size={8} />
+                            Permanent Member
+                          </span>
                           <span className="text-[8px] font-black bg-white/5 px-2 py-0.5 rounded text-slate-400 uppercase tracking-widest">
                             {partner.location?.city}
-                          </span>
-                          <span className="text-[8px] font-mono text-slate-600">
-                            Expires: {partner.subscription_end_date}
                           </span>
                         </div>
                       </div>
@@ -742,37 +701,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                       >
                         <Edit2 size={16} />
                       </button>
-                      <button 
-                        onClick={() => setConfirmDeleteId(partner.id)}
-                        className="p-2 hover:bg-white/5 rounded-lg text-slate-500 hover:text-red-400 transition-colors"
-                        title="Delete Partner"
-                      >
-                        <Trash2 size={16} />
-                      </button>
                     </div>
                   </div>
-
-                  {confirmDeleteId === partner.id && (
-                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl animate-in zoom-in-95 duration-200">
-                      <p className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-3 text-center">
-                        Confirm Remove? (Revokes partner role & hides profile)
-                      </p>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handleDeletePartner(partner.id)}
-                          className="flex-1 py-2 bg-red-500 hover:bg-red-400 text-black text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                        >
-                          Confirm
-                        </button>
-                        <button 
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest rounded-lg transition-all"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                   {editingPartnerId === partner.id ? (
                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
@@ -827,15 +757,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                             type="text" 
                             defaultValue={partner.contact?.phone}
                             onBlur={(e) => handleUpdatePartner(partner.id, { 'contact.phone': e.target.value })}
-                            className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Subscription Expiry</label>
-                          <input 
-                            type="date" 
-                            defaultValue={partner.subscription_end_date}
-                            onBlur={(e) => handleUpdatePartner(partner.id, { subscription_end_date: e.target.value })}
                             className="w-full bg-black/40 border border-white/5 rounded-lg px-3 py-2 text-xs text-white focus:border-cyan-500/50 outline-none"
                           />
                         </div>
@@ -957,15 +878,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
                         </div>
                       </div>
                     </div>
-                    {u.role === 'partner' && (
-                      <button
-                        onClick={() => handleRemoveVerifiedUser(u.id)}
-                        className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
-                        title="Remove Partner Role"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-[10px] text-slate-300">

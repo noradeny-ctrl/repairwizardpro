@@ -56,7 +56,11 @@ export const BecomePartnerModal: React.FC<BecomePartnerModalProps> = ({ isOpen, 
       await setDoc(applicationRef, applicationData);
       setSubmitted(true);
     } catch (err: any) {
-      handleFirestoreError(err, OperationType.CREATE, 'partnerApplications');
+      try {
+        handleFirestoreError(err, OperationType.CREATE, 'partnerApplications');
+      } catch (fsErr: any) {
+        setError(fsErr.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
