@@ -209,7 +209,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
         }
       });
 
-      // 3. Send Email (Simulated)
+      // 3. Send Email Notification
       await sendNotification('approve', {
         email: app.email,
         phone: app.phone,
@@ -342,6 +342,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onClose }) => {
           description: newPartner.description || "Verified Partner"
         }
       });
+
+      // Notify the new partner
+      await sendNotification('approve', {
+        email: newPartner.email,
+        phone: newPartner.phone,
+        companyName: newPartner.business_name
+      });
+
       setIsAddingPartner(false);
       setNewPartner({
         business_name: '',
