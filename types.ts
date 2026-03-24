@@ -1,9 +1,22 @@
 
 export enum RegionMode {
-  WESTERN = 'English',
-  SORANI = 'Soranî',
-  BADINAN = 'Badînî',
-  ARABIC = 'العربية'
+  WESTERN = 'WESTERN',
+  BADINAN = 'BADINAN',
+  SORANI = 'SORANI',
+  ARABIC = 'ARABIC'
+}
+
+export type ResultType = 'FIX' | 'TEST' | 'LEARN';
+
+export interface AnalysisResult {
+  diagnosis: string;
+  partName: string;
+  toolsNeeded: string[];
+  instructions: string[];
+  safetyWarning?: string;
+  tip: string;
+  isKurdish: boolean;
+  resultType: ResultType;
 }
 
 export interface Coordinates {
@@ -11,93 +24,43 @@ export interface Coordinates {
   longitude: number;
 }
 
+export interface PartnerPolicy {
+  fair_price_guarantee: boolean;
+  description: string;
+}
+
 export interface Partner {
   id: string;
   business_name: string;
+  business_name_ar?: string;
   is_verified: boolean;
-  specialties: string[];
-  services_offered: string[];
-  phone?: string;
+  rating: number;
+  location: {
+    city: string;
+    address: string;
+    coordinates: Coordinates;
+  };
   contact: {
+    phone_display: string;
     whatsapp_link: string;
+    email: string | null;
   };
   images: {
     profile: string;
+    verified_badge: string;
   };
-  location: {
-    city: string;
-    coordinates: Coordinates;
-  };
-  policy?: {
-    fair_price_guarantee: boolean;
-    description: string;
-  };
+  specialties: string[];
+  services_offered: string[];
+  policy?: PartnerPolicy;
   distance?: number;
-}
-
-export interface AnalysisResult {
-  diagnosis: string;
-  resultType: 'FIX' | 'TEST' | 'LEARN' | 'VIN_SCAN';
-  partName: string;
-  toolsNeeded: string[];
-  instructions: string[];
-  safetyWarning?: string;
-  tip: string;
-  isKurdish: boolean;
-  markdownOutput: string; // The full dashboard output
-  vinScanData?: {
-    vin: string;
-    make: string;
-    model: string;
-    year: string;
-    engine?: string;
-    trim?: string;
-    technicalSpecs?: {
-      label: string;
-      value: string;
-    }[];
-    mileageStatus?: string;
-    titleStatus?: string;
-    safetyRating?: string;
-    recalls?: {
-      id: string;
-      title: string;
-      date: string;
-      status: 'Open' | 'Closed';
-    }[];
-    auctionHistory?: {
-      date: string;
-      odometer: string;
-      damage: string;
-      location: string;
-      finalBid?: string;
-    }[];
-  };
-  repairCost?: number;
-  marketValue?: number;
-  groundingSources?: {
-    title: string;
-    uri: string;
-  }[];
-}
-
-export interface MarketAnalysisResult {
-  estimatedMarketValue: string;
-  resalePotential: 'High' | 'Medium' | 'Low';
-  demandScore: number;
-  commonIssuesForModel: string[];
-  importAdvice: string;
-  localMarketPriceRange: string;
 }
 
 export interface AppState {
   userInput: string;
-  mode: RegionMode;
+  image?: string;
   isAnalyzing: boolean;
-  isStarted: boolean;
   result?: AnalysisResult;
   error?: string;
-  errorCategory?: 'network' | 'safety' | 'quota' | 'permission' | 'generic' | 'validation';
-  selectedImage?: string;
-  isAuthModalOpen: boolean;
+  mode: RegionMode;
+  isStarted: boolean;
 }

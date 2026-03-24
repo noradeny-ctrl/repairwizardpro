@@ -1,56 +1,11 @@
 
-// Main Application Component
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Globe, Loader2, Ship, AlertTriangle, Activity, ArrowLeft, Camera, Image as ImageIcon, X, ShieldCheck, History as HistoryIcon } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Fuse from 'fuse.js';
-import { RegionMode, AppState, Partner, Coordinates, AnalysisResult } from './types';
+import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
-import { formatAppError } from './services/errorService';
 import ResultView from './components/ResultView';
 import WizardIcon from './components/WizardIcon';
-import ErrorModal from './components/ErrorModal';
-import ExportTerminal from './components/ExportTerminal';
-import ProtocolInitialization from './components/ProtocolInitialization';
-import OBDAnalyzer from './components/OBDAnalyzer';
-import { AdminDashboard } from './components/AdminDashboard';
-import { UserDashboard } from './components/PartnerDashboard';
-import { SettingsModal } from './components/SettingsModal';
-import { VerifiedPartnersGrid } from './components/VerifiedPartnersGrid';
-import { AuthModal } from './components/AuthModal';
+import PartnerBadge from './components/PartnerBadge';
 import partnersData, { fetchActivePartners } from './partners';
-import { db, auth, googleProvider, signInWithPopup, signOut, handleFirestoreError, OperationType } from './firebase';
-import { collection, addDoc, doc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { useFirebase } from './components/FirebaseProvider';
-import { LogIn, LogOut, User as UserIcon, Settings, CheckCircle2 } from 'lucide-react';
-
-const Toast = memo(({ show, name, onClose }: { show: boolean; name: string; onClose: () => void }) => (
-  <AnimatePresence>
-    {show && (
-      <motion.div
-        initial={{ opacity: 0, y: 50, scale: 0.9 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.9 }}
-        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[300] flex items-center gap-4 bg-[#0d1117] border border-cyan-500/30 px-6 py-4 rounded-[2rem] shadow-2xl shadow-cyan-500/10 backdrop-blur-xl"
-      >
-        <div className="w-10 h-10 bg-cyan-500/20 rounded-2xl flex items-center justify-center border border-cyan-500/20">
-          <CheckCircle2 className="text-cyan-400" size={20} />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Welcome Back</span>
-          <span className="text-sm font-black text-white uppercase tracking-tight">{name}</span>
-        </div>
-        <button 
-          onClick={onClose}
-          className="ml-4 p-2 hover:bg-white/5 rounded-full transition-colors text-slate-500 hover:text-white"
-        >
-          <X size={16} />
-        </button>
-      </motion.div>
-    )}
-  </AnimatePresence>
-));
 
 const KurdishFlag = memo(({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 1400 900" xmlns="http://www.w3.org/2000/svg">
@@ -107,12 +62,12 @@ const ArabicFlag = memo(({ className }: { className?: string }) => (
   </svg>
 ));
 
-export const SunBackground = memo(() => (
+const SunBackground = memo(() => (
   <div className="absolute top-0 right-0 w-[800px] h-[800px] pointer-events-none z-0 overflow-hidden">
     <div 
       className="absolute top-[-300px] right-[-300px] w-full h-full opacity-60 blur-[60px]"
       style={{
-        background: `radial-gradient(circle at center, rgba(34, 211, 238, 0.2) 0%, rgba(15, 23, 42, 0.1) 40%, transparent 70%)`
+        background: `radial-gradient(circle at center, rgba(255, 215, 0, 0.2) 0%, rgba(39, 142, 67, 0.1) 40%, transparent 70%)`
       }}
     />
   </div>
@@ -172,59 +127,16 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 const App: React.FC = () => {
-  const { t, i18n } = useTranslation();
-  const { user, userProfile, loading, isAdmin, login, logout } = useFirebase();
   const [state, setState] = useState<AppState>({
     userInput: '',
     mode: RegionMode.WESTERN,
     isAnalyzing: false,
     isStarted: false,
-    selectedImage: undefined,
-    isAuthModalOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
-  const [isPartnersLoading, setIsPartnersLoading] = useState(false);
-  const [isExportTerminalOpen, setIsExportTerminalOpen] = useState(false);
-  const [showOBD, setShowOBD] = useState(false);
-  const [detectedOBD, setDetectedOBD] = useState<string | null>(null);
-  const [obdInput, setObdInput] = useState('');
-  const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
-  const [isHistoryDashboardOpen, setIsHistoryDashboardOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [welcomeToast, setWelcomeToast] = useState<{ show: boolean; name: string }>({ show: false, name: '' });
-  const [filterCity, setFilterCity] = useState<string>('all');
-  const [filterSpecialty, setFilterSpecialty] = useState<string>('all');
-  const [filterService, setFilterService] = useState<string>('all');
-
-  useEffect(() => {
-    const testConnection = async (retries = 3) => {
-      // Small delay to allow SDK to initialize
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      try {
-        const docRef = doc(db, 'test', 'connection');
-        await getDocFromServer(docRef);
-        console.log("✅ Firestore connection verified.");
-      } catch (err: any) {
-        if (retries > 0) {
-          console.warn(`⚠️ Firestore connection attempt failed, retrying... (${retries} left)`);
-          return testConnection(retries - 1);
-        }
-        console.error("❌ Firestore connection failed after retries:", err);
-        // Don't set a blocking error for the user unless it's a quota issue
-        const errorMsg = err.message || String(err);
-        if (errorMsg.toLowerCase().includes('rate exceeded') || errorMsg.includes('429')) {
-          setState(prev => ({ 
-            ...prev, 
-            error: t('common.connection_throttled', "The Wizard's connection is currently throttled. Please wait a few seconds and refresh."),
-            errorCategory: 'quota'
-          }));
-        }
-      }
-    };
-    testConnection().catch(err => console.error("Initial connection test failed:", err));
-  }, []);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (state.isStarted) {
@@ -234,196 +146,61 @@ const App: React.FC = () => {
         { enableHighAccuracy: false, timeout: 5000 }
       );
       // Asynchronously refresh partners list from Firebase
-      setIsPartnersLoading(true);
-      fetchActivePartners()
-        .then(setLivePartners)
-        .catch(console.error)
-        .finally(() => setIsPartnersLoading(false));
+      fetchActivePartners().then(setLivePartners).catch(console.error);
     }
   }, [state.isStarted]);
 
-  const saveRepairToFirestore = async (userInput: string, analysis: AnalysisResult) => {
-    const repairData = {
-      id: crypto.randomUUID(),
-      userId: user?.uid || 'anonymous',
-      issueDescription: userInput,
-      aiDiagnosis: analysis.diagnosis,
-      status: 'diagnosed',
-      createdAt: new Date().toISOString()
-    };
-    
-    await addDoc(collection(db, 'repairs'), repairData)
-      .catch(err => {
-        try {
-          handleFirestoreError(err, OperationType.CREATE, 'repairs');
-        } catch (fsErr: any) {
-          setState(prev => ({ ...prev, error: fsErr.message, errorCategory: 'generic' }));
+  const handleFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setState(prev => ({ ...prev, image: e.target?.result as string, error: undefined }));
+    reader.readAsDataURL(file);
+  }, []);
+
+  const getErrorMessage = useCallback((error: any, mode: RegionMode) => {
+    if (error instanceof WizardError) {
+      if (mode !== RegionMode.WESTERN) {
+        switch (error.category) {
+          case 'network': return mode === RegionMode.ARABIC ? "أنت غير متصل بالإنترنت." : "تۆ پەیوەست نیت بە ئینتەرنێتەوە.";
+          case 'quota': return mode === RegionMode.ARABIC ? "طلبات كثيرة جداً." : "داواکارییەکان زۆرن.";
+          default: return mode === RegionMode.ARABIC ? "حدث خطأ ما." : "کێشەیەک ڕوویدا.";
         }
-      });
-  };
+      }
+      return error.message;
+    }
+    return "An unexpected error occurred.";
+  }, []);
 
   const startAnalysis = useCallback(async () => {
-    if (!state.userInput.trim() && !state.selectedImage) {
-      setState(prev => ({ ...prev, error: t('common.provide_description_or_image', "Please provide a description or an image."), errorCategory: 'validation' }));
+    if (!state.userInput.trim() && !state.image) {
+      setState(prev => ({ ...prev, error: "Please provide a description or an image." }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
-    const startTime = Date.now();
     try {
-      const analysis = await analyzeProblem(state.userInput, state.selectedImage, state.mode);
-      
-      if (!analysis || typeof analysis !== 'object') {
-        throw new Error(t('common.invalid_analysis_payload', "Invalid analysis payload received."));
-      }
-
-      await saveRepairToFirestore(state.userInput, analysis);
-
+      const pureBase64 = state.image?.split(',')[1];
+      const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
-      console.error("Analysis Failure:", err);
-      const { message, category } = formatAppError(err, state.mode);
-      setState(prev => ({ ...prev, isAnalyzing: false, error: message, errorCategory: category }));
+      setState(prev => ({ ...prev, isAnalyzing: false, error: getErrorMessage(err, state.mode) }));
     }
-  }, [state.userInput, state.mode]);
+  }, [state.userInput, state.image, state.mode, getErrorMessage]);
 
   const resetApp = useCallback(() => {
-    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, userInput: '', error: undefined }));
+    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, image: undefined, userInput: '', error: undefined }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
-  const uniqueCities = useMemo(() => ['all', ...new Set(livePartners.map(p => p.location.city))], [livePartners]);
-  const uniqueSpecialties = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.specialties))], [livePartners]);
-  const uniqueServices = useMemo(() => ['all', ...new Set(livePartners.flatMap(p => p.services_offered))], [livePartners]);
-
-  useEffect(() => {
-    if (userProfile && !welcomeToast.show && !loading) {
-      setWelcomeToast({ show: true, name: userProfile.displayName || 'Wizard' });
-      setTimeout(() => setWelcomeToast(prev => ({ ...prev, show: false })), 5000);
-    }
-  }, [userProfile, loading]);
-
-  const filteredLivePartners = useMemo(() => {
-    return livePartners.filter(p => {
-      const matchesCity = filterCity === 'all' || p.location.city === filterCity;
-      const matchesSpecialty = filterSpecialty === 'all' || p.specialties.includes(filterSpecialty);
-      const matchesService = filterService === 'all' || p.services_offered.includes(filterService);
-      return matchesCity && matchesSpecialty && matchesService;
-    });
-  }, [livePartners, filterCity, filterSpecialty, filterService]);
-
   const setInitialMode = useCallback((mode: RegionMode) => {
-    const langMap: Record<RegionMode, string> = {
-      [RegionMode.WESTERN]: 'en',
-      [RegionMode.BADINAN]: 'ku-BA',
-      [RegionMode.SORANI]: 'ku-SO',
-      [RegionMode.ARABIC]: 'ar'
-    };
-    i18n.changeLanguage(langMap[mode]);
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
-  }, [i18n]);
-
-  const handleLogin = () => {
-    setState(prev => ({ ...prev, isAuthModalOpen: true }));
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        const base64Data = base64String.split(',')[1];
-        setState(prev => ({ ...prev, selectedImage: base64Data }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeImage = () => {
-    setState(prev => ({ ...prev, selectedImage: undefined }));
-  };
+  }, []);
 
   const isRTL = state.mode !== RegionMode.WESTERN;
 
-  const hasImage = !!state.selectedImage;
-
-  const looksLikeVin = useMemo(() => {
-    const trimmed = state.userInput.trim();
-    return trimmed.length >= 10 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed);
-  }, [state.userInput]);
-
-  const isImagePending = useMemo(() => {
-    return !!state.selectedImage && !state.result;
-  }, [state.selectedImage, state.result]);
-
-  const isObdInMainInput = useMemo(() => {
-    return /[PBUC][0-9]{4}/i.test(state.userInput) && !state.result;
-  }, [state.userInput, state.result]);
-
-  const isValidVin = useMemo(() => {
-    return /^[A-HJ-NPR-Z0-9]{17}$/i.test(state.userInput.trim());
-  }, [state.userInput]);
-
-  const isValidObd = useMemo(() => {
-    // Basic OBD-II code pattern: P, B, U, or C followed by 4 digits
-    if (obdInput.trim()) {
-      return /^[PBUC][0-9]{4}$/i.test(obdInput.trim());
-    }
-    // For main input, check if it contains a code anywhere
-    return /[PBUC][0-9]{4}/i.test(state.userInput);
-  }, [state.userInput, obdInput]);
-
-  useEffect(() => {
-    if (obdInput.trim()) {
-      const match = obdInput.trim().match(/[PBUC][0-9]{4}/i);
-      setDetectedOBD(match ? match[0].toUpperCase() : null);
-    } else {
-      const match = state.userInput.match(/[PBUC][0-9]{4}/i);
-      setDetectedOBD(match ? match[0].toUpperCase() : null);
-    }
-  }, [state.userInput, obdInput]);
-
-  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    let val = e.target.value;
-    
-    // Auto-uppercase if it looks like a VIN (no spaces, alphanumeric)
-    if (!val.includes(' ') && !val.includes('\n') && /^[A-Za-z0-9]*$/.test(val)) {
-      val = val.toUpperCase();
-    }
-
-    let error = undefined;
-    const trimmed = val.trim();
-    
-    // Real-time VIN validation feedback - ONLY if it looks like a VIN attempt
-    // (length >= 10, no spaces, alphanumeric)
-    if (trimmed.length >= 10 && trimmed.length <= 17 && !trimmed.includes(' ') && /^[A-Z0-9]*$/i.test(trimmed)) {
-      if (/[IOQ]/i.test(trimmed)) {
-        error = t('common.vin_invalid_chars', "VINs never contain the letters I, O, or Q.");
-      } else if (trimmed.length === 17 && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(trimmed)) {
-        error = t('common.vin_invalid_format', "Invalid VIN format. Please check for special characters.");
-      }
-    }
-
-    setState(prev => ({ ...prev, userInput: val, error }));
-  }, []);
-
   const nearbyPartners = useMemo(() => {
-    // Start with filtered partners
-    let basePartners = filteredLivePartners;
-    
-    if (!userLocation) {
-      // If no location, return filtered partners without distance
-      return basePartners.map(p => ({ ...p, distance: undefined }));
-    }
-
-    return basePartners
+    if (!userLocation) return [];
+    return livePartners
       .filter(p => p.location?.coordinates?.latitude !== undefined && p.location?.coordinates?.longitude !== undefined)
       .map(p => ({ 
         ...p, 
@@ -436,637 +213,81 @@ const App: React.FC = () => {
       }))
       .filter(p => (p.distance ?? 999) <= 65)
       .sort((a, b) => (a.distance || 0) - (b.distance || 0));
-  }, [userLocation, filteredLivePartners]);
+  }, [userLocation, livePartners]);
 
   const recommendedPartners = useMemo(() => {
     if (!nearbyPartners.length || !state.result) return [];
-    
-    const diagnosis = state.result.diagnosis;
-    const partName = state.result.partName;
-    const userInput = state.userInput;
-
-    // 1. Initialize Fuse for the entire nearby partners collection
-    // This is much more efficient than per-partner initialization
-    const fuse = new Fuse(nearbyPartners, {
-      keys: [
-        { name: 'specialties', weight: 2 },
-        { name: 'services_offered', weight: 1 }
-      ],
-      includeScore: true,
-      threshold: 0.4,
-      ignoreLocation: true,
-      useExtendedSearch: true
-    });
-
-    // 2. Perform searches for different context levels
-    const partResults = fuse.search(partName);
-    const diagResults = fuse.search(diagnosis);
-    const inputResults = fuse.search(userInput);
-
-    // 3. Create a map for quick score lookup
-    const scoreMap = new Map<string, number>();
-
-    const applyResults = (results: any[], weight: number) => {
-      results.forEach(res => {
-        const current = scoreMap.get(res.item.id) || 0;
-        // Fuse score: 0 is perfect, 1 is no match. We invert it.
-        const matchQuality = 1 - (res.score || 0);
-        scoreMap.set(res.item.id, current + (matchQuality * weight));
-      });
-    };
-
-    applyResults(partResults, 20); // Part name is highest priority
-    applyResults(diagResults, 12); // Diagnosis is medium priority
-    applyResults(inputResults, 5); // User input is lowest priority
-
-    // 4. Final scoring and sorting
-    return nearbyPartners
-      .map(p => {
-        let expertScore = scoreMap.get(p.id) || 0;
-        
-        // Proximity Bonus: Closer partners get a significant boost
-        // Max bonus of 10 points for being right next to the user
-        const proximityBonus = p.distance !== undefined ? Math.max(0, (1 - (p.distance / 50)) * 10) : 0;
-        
-        const totalScore = expertScore + proximityBonus;
-
-        return { ...p, matchScore: totalScore };
-      })
-      .filter(p => p.matchScore > 3) // Filter out irrelevant matches
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, 3);
+    const context = `${state.userInput} ${state.result.diagnosis} ${state.result.partName}`.toLowerCase();
+    return nearbyPartners.filter(p => 
+      p.specialties.some(s => context.includes(s.toLowerCase())) || 
+      p.services_offered.some(s => context.includes(s.toLowerCase()))
+    ).slice(0, 3);
   }, [nearbyPartners, state.userInput, state.result]);
 
-  // 1. Handle fatal errors first, before any other conditional returns
-  if (state.error) {
-    const getErrorIcon = () => {
-      switch (state.errorCategory) {
-        case 'network': return <Globe className="w-10 h-10 text-red-400" />;
-        case 'quota': return <Loader2 className="w-10 h-10 text-amber-400 animate-spin" />;
-        case 'safety': return <AlertTriangle className="w-10 h-10 text-orange-400" />;
-        case 'permission': return <LogOut className="w-10 h-10 text-red-500" />;
-        case 'validation': return <Camera className="w-10 h-10 text-cyan-400" />;
-        default: return <span className="text-4xl">🧙‍♂️</span>;
-      }
-    };
-
-    return (
-      <div className="flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 text-center animate-fade-in">
-        <SunBackground />
-        <div className="relative z-10 bg-slate-900/60 border border-red-500/20 rounded-[2.5rem] p-10 max-w-md backdrop-blur-xl shadow-2xl">
-          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6 mx-auto">
-            {getErrorIcon()}
-          </div>
-          <h2 className="text-xl font-bold mb-4 text-red-400 uppercase tracking-widest">
-            {state.errorCategory === 'quota' ? t('common.connection_throttled', 'Connection Throttled') : t('common.error_title')}
-          </h2>
-          <p className="text-slate-300 text-sm mb-8 leading-relaxed">
-            {state.error}
-          </p>
-          <div className="flex flex-col gap-3">
-            <button 
-              onClick={() => window.location.reload()}
-              className="w-full py-4 bg-slate-800 hover:bg-slate-700 border border-white/10 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
-            >
-              {t('common.retry')}
-            </button>
-            <button 
-              onClick={() => setState(prev => ({ ...prev, error: undefined, errorCategory: undefined }))}
-              className="w-full py-4 bg-white/5 hover:bg-white/10 border border-white/5 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all"
-            >
-              {t('common.back_to_dashboard', 'Back to Dashboard')}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const PartnerProgramSection = useMemo(() => (
+    <div className="mt-12 bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
+      <div className="absolute top-0 right-0 p-4 opacity-10"><PartnerBadge size={100} /></div>
+      <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">VERIFIED PARTNER PROGRAM</h3>
+      <p className="text-sm text-slate-300 leading-relaxed mb-6">Join our network as a certified technician.</p>
+      <a href="mailto:support@repairwizard.net" className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors">Contact Support</a>
+    </div>
+  ), []);
 
   if (!state.isStarted) {
     return (
-      <div className="relative flex flex-col items-center justify-center h-full bg-[#0A0E14] text-white p-8 animate-fade-in overflow-hidden safe-area-pt">
+      <div className="relative flex flex-col items-center justify-center h-full bg-[#0a0f1e] text-white p-8 animate-fade-in overflow-hidden">
         <SunBackground />
-        
-        <div className="absolute top-6 right-6 z-50">
-          {loading ? (
-            <div className="w-10 h-10 rounded-xl bg-white/5 animate-pulse" />
-          ) : user ? (
-            <div className="flex items-center gap-3 bg-slate-900/40 backdrop-blur-md p-2 rounded-2xl border border-white/10">
-              {user.photoURL ? (
-                <img 
-                  src={user.photoURL} 
-                  alt="Profile" 
-                  className="w-8 h-8 rounded-lg border border-white/10"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-8 h-8 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center">
-                  <UserIcon size={16} className="text-slate-500" />
-                </div>
-              )}
-              <div className="flex flex-col pr-2">
-                <span className="text-[8px] font-black text-white uppercase tracking-tight">
-                  {userProfile?.displayName || user.displayName}
-                </span>
-                <button 
-                  onClick={handleLogout}
-                  className="text-[7px] font-black text-red-400 uppercase tracking-widest text-left hover:text-red-300 transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button 
-              onClick={handleLogin}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95"
-            >
-              <LogIn size={14} />
-              <span>Login</span>
-            </button>
-          )}
-        </div>
-
         <DraggableLogo />
-        
-        <AuthModal 
-          isOpen={state.isAuthModalOpen} 
-          onClose={() => setState(prev => ({ ...prev, isAuthModalOpen: false }))} 
-        />
-
         <div className="relative z-10 grid grid-cols-2 gap-4 w-full max-w-sm animate-slide-up stagger-1">
-          {[{ id: RegionMode.BADINAN, label: t('modes.badinan'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: t('modes.sorani'), flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: t('modes.arabic'), flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: t('modes.western'), flag: <USAFlag className="w-10" /> }].map((m) => (
+          {[{ id: RegionMode.BADINAN, label: 'Badînî', flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.SORANI, label: 'Soranî', flag: <KurdishFlag className="w-10" /> }, { id: RegionMode.ARABIC, label: 'العربية', flag: <ArabicFlag className="w-10" /> }, { id: RegionMode.WESTERN, label: 'English', flag: <USAFlag className="w-10" /> }].map((m) => (
             <button key={m.id} onClick={() => setInitialMode(m.id)} className="flex flex-col items-center p-5 rounded-[2rem] bg-slate-800/40 border border-white/5 transition-all hover:bg-emerald-500/10 active:scale-95 shadow-xl backdrop-blur-sm">
               <div className="mb-3 rounded overflow-hidden shadow-md">{m.flag}</div>
               <h2 className="text-sm font-bold">{m.label}</h2>
             </button>
           ))}
         </div>
-        <Toast 
-          show={welcomeToast.show} 
-          name={welcomeToast.name} 
-          onClose={() => setWelcomeToast(prev => ({ ...prev, show: false }))} 
-        />
       </div>
     );
   }
 
   return (
-      <div className="flex flex-col h-full bg-[#0A0E14] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
-        <SunBackground />
-        
-        <Toast 
-          show={welcomeToast.show} 
-          name={welcomeToast.name} 
-          onClose={() => setWelcomeToast(prev => ({ ...prev, show: false }))} 
-        />
-        
-        <header className="px-6 pt-6 pb-4 flex justify-between items-center border-b border-white/5 bg-[#0A0E14]/80 backdrop-blur-ultra sticky top-0 z-50 safe-area-pt">
-          <div 
-            className="flex items-center gap-3 cursor-pointer drop-shadow-[0_0_8px_rgba(0,240,255,0.4)]" 
-            onClick={() => setState(prev => ({...prev, isStarted: false}))}
-          >
-            <WizardIcon className="h-14 md:h-16 w-auto object-contain" />
-            <Globe className="w-5 h-5 text-cyan-400" />
-          </div>
-          <div className="flex items-center gap-3 sm:gap-4">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-white/5 animate-pulse" />
-            ) : user ? (
-              <div className="flex items-center gap-3">
-                <div className="hidden md:flex flex-col items-end">
-                  <span className="text-[10px] font-black text-white uppercase tracking-tight leading-none">
-                    {userProfile?.displayName || user.displayName}
-                  </span>
-                  <span className="text-[8px] font-bold text-cyan-400 uppercase tracking-widest mt-1">
-                    {userProfile?.role || 'User'}
-                  </span>
-                </div>
-                  <div className="relative group">
-                    {user.photoURL ? (
-                      <img 
-                        src={user.photoURL} 
-                        alt="Profile" 
-                        className="w-10 h-10 rounded-xl border border-white/10 group-hover:border-cyan-500/50 transition-all cursor-pointer"
-                        referrerPolicy="no-referrer"
-                        onClick={() => setIsSettingsModalOpen(true)}
-                      />
-                    ) : (
-                      <div 
-                        className="w-10 h-10 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center group-hover:border-cyan-500/50 transition-all cursor-pointer"
-                        onClick={() => setIsSettingsModalOpen(true)}
-                      >
-                        <UserIcon size={20} className="text-slate-500" />
-                      </div>
-                    )}
-                    <div className="absolute -bottom-1 -right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <button 
-                        onClick={() => setIsSettingsModalOpen(true)}
-                        className="p-1.5 bg-cyan-500 rounded-lg text-black hover:scale-110 transition-transform"
-                        title="Settings"
-                      >
-                        <Settings size={10} />
-                      </button>
-                      <button 
-                        onClick={handleLogout}
-                        className="p-1.5 bg-red-500 rounded-lg text-white hover:scale-110 transition-transform"
-                        title="Logout"
-                      >
-                        <LogOut size={10} />
-                      </button>
-                    </div>
-                  </div>
-              </div>
-            ) : (
-              <button 
-                onClick={handleLogin}
-                className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-cyan-500/20 border border-white/10 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95"
-              >
-                <LogIn size={14} />
-                <span className="hidden sm:inline">Login</span>
-              </button>
-            )}
-            
-            <button 
-              onClick={() => setIsExportTerminalOpen(true)}
-              className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-emerald-500/20 group"
-              title={t('common.b2b_terminal', 'B2B Terminal')}
-            >
-              <Ship size={14} className="group-hover:scale-110 transition-transform" />
-              <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">{t('common.b2b_terminal', 'B2B Terminal')}</span>
-            </button>
-
-            {isAdmin && (
-              <button 
-                onClick={() => setIsAdminDashboardOpen(true)}
-                className="px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-cyan-500/20 group"
-                title="Admin Panel"
-              >
-                <ShieldCheck size={14} className="group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">Admin</span>
-              </button>
-            )}
-
-            {user && (
-              <button 
-                onClick={() => setIsHistoryDashboardOpen(true)}
-                className="px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 transition-all active:scale-95 flex items-center gap-2 hover:bg-emerald-500/20 group"
-                title="History"
-              >
-                <HistoryIcon size={14} className="group-hover:scale-110 transition-transform" />
-                <span className="text-[9px] font-black uppercase tracking-widest hidden lg:inline">History</span>
-              </button>
-            )}
-
-            <div className="hidden sm:block px-3 py-1 bg-cyan-500/10 rounded-full border border-cyan-500/20 text-[9px] font-black text-cyan-400 uppercase">
-              {state.mode}
-            </div>
-          </div>
-        </header>
-
-        {isExportTerminalOpen && (
-          <ExportTerminal 
-            onClose={() => setIsExportTerminalOpen(false)} 
-            mode={state.mode}
-          />
-        )}
-
-        {isAdmin && isAdminDashboardOpen && (
-          <AdminDashboard 
-            onClose={() => setIsAdminDashboardOpen(false)} 
-          />
-        )}
-
-        {isHistoryDashboardOpen && (
-          <UserDashboard 
-            onClose={() => setIsHistoryDashboardOpen(false)} 
-          />
-        )}
-
-        {isSettingsModalOpen && (
-          <SettingsModal 
-            isOpen={isSettingsModalOpen}
-            onClose={() => setIsSettingsModalOpen(false)} 
-          />
-        )}
-
-        {showOBD ? (
-          <main className="flex-1 ios-scroll hide-scrollbar relative z-10 p-6 min-h-0">
-            <div className="max-w-4xl mx-auto">
-              <button 
-                onClick={() => setShowOBD(false)}
-                className="mb-6 py-2 flex items-center gap-2 text-[10px] font-black text-cyan-500/60 hover:text-cyan-400 uppercase tracking-[0.3em] transition-colors group"
-              >
-                <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-                {t('common.back_to_dashboard', 'Back to Dashboard')}
-              </button>
-              <OBDAnalyzer mode={state.mode} initialCode={detectedOBD || ''} />
-              <div className="h-40" />
-            </div>
-          </main>
-        ) : (
-          <main className="flex-1 ios-scroll p-6 space-y-6 hide-scrollbar relative z-10 min-h-0">
-            <div className={`bg-slate-800/40 border rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md relative group transition-all duration-500 
-              ${(looksLikeVin || isImagePending) 
-                ? 'border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.2)]' 
-                : (isObdInMainInput 
-                  ? 'border-amber-500 shadow-[0_0_30px_rgba(245,158,11,0.1)]' 
-                  : 'border-white/5')}`}>
-            <div className="relative">
-              <textarea 
-                className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium relative z-10" 
-                placeholder={t('common.describe_problem')} 
-                value={state.userInput} 
-                onChange={handleInputChange} 
-              />
-              {/* Highlight Overlay for Main Textarea */}
-              <AnimatePresence>
-                {looksLikeVin && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="absolute top-0 right-0 z-20 flex items-center gap-2 px-3 py-1.5 bg-cyan-500/20 border border-cyan-500/30 rounded-xl backdrop-blur-sm"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
-                      {isValidVin ? t('common.vin_verified', 'VIN VERIFIED') : t('common.vin_detected', 'VIN DETECTED')}
-                    </span>
-                  </motion.div>
-                )}
-                {isObdInMainInput && !looksLikeVin && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    className="absolute top-0 right-0 z-20 flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 border border-amber-500/30 rounded-xl backdrop-blur-sm"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest">
-                      {t('common.code_detected', 'CODE DETECTED')}: {detectedOBD}
-                    </span>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Dedicated OBD Input Section */}
-            <div className="relative group/obd mt-2 mb-4">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <Activity size={16} className={`${obdInput.trim() && isValidObd ? 'text-amber-400' : 'text-cyan-500/30'} group-focus-within/obd:text-cyan-400 transition-colors`} />
-              </div>
-              <input 
-                type="text"
-                placeholder={t('common.enter_obd_code', 'OR ENTER OBD-II CODE (e.g. P0300)')}
-                className={`w-full bg-black/20 border rounded-2xl py-3 pl-12 pr-4 text-sm font-mono transition-all outline-none placeholder-slate-600 ${obdInput.trim() && isValidObd ? 'border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]' : 'border-white/5 text-cyan-400 focus:border-cyan-500/30'}`}
-                value={obdInput}
-                onChange={(e) => setObdInput(e.target.value.toUpperCase())}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && isValidObd) {
-                    setShowOBD(true);
-                  }
-                }}
-              />
-              <AnimatePresence>
-                {obdInput.trim() && isValidObd && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2"
-                  >
-                    <div className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[7px] font-black text-amber-400 uppercase tracking-tighter">
-                      VALID
-                    </div>
-                    <button 
-                      onClick={() => setShowOBD(true)}
-                      className="px-3 py-1 bg-amber-500 text-black rounded-lg text-[8px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all shadow-lg shadow-amber-500/20"
-                    >
-                      {t('common.analyze_now', 'ANALYZE NOW')}
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Image Preview */}
-            <AnimatePresence>
-              {state.selectedImage && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="relative mb-6 group"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="relative w-32 h-32 shrink-0">
-                      <img 
-                        src={`data:image/jpeg;base64,${state.selectedImage}`} 
-                        alt="Selected" 
-                        className="w-full h-full object-cover rounded-2xl border-2 border-emerald-500/50"
-                      />
-                      <button 
-                        onClick={removeImage}
-                        className="absolute -top-2 -right-2 p-1 bg-red-500 rounded-full text-white shadow-lg hover:bg-red-600 transition-colors"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                    <div className="flex-1 pt-2">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest">
-                          {t('common.visual_data_ready', 'VISUAL DATA READY')}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-relaxed mb-3">
-                        {t('common.visual_analysis_desc', 'THE WIZARD WILL ANALYZE THIS IMAGE FOR DAMAGE, PARTS, OR WARNING LIGHTS.')}
-                      </p>
-                      <button 
-                        onClick={startAnalysis}
-                        className="px-4 py-2 bg-emerald-500 text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
-                      >
-                        {t('common.analyze_photo', 'ANALYZE PHOTO')}
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Inline Error Message */}
-            <AnimatePresence>
-              {state.error && !['validation', 'network', 'quota'].includes(state.errorCategory || '') && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mb-4 overflow-hidden"
-                >
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3">
-                    <AlertTriangle size={14} className="text-red-400 shrink-0" />
-                    <p className="text-red-400 text-[10px] font-bold uppercase tracking-wider leading-tight">
-                      {String(state.error)}
-                    </p>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            
-            {/* Input Actions Toolbar */}
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/5">
-               <div className="flex gap-2">
-                 <input 
-                   type="file" 
-                   accept="image/*" 
-                   id="image-upload" 
-                   className="hidden" 
-                   onChange={handleImageUpload}
-                 />
-                 <label 
-                   htmlFor="image-upload"
-                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
-                 >
-                   <Camera size={14} className="text-cyan-400" />
-                   <span>{t('common.add_photo', 'ADD PHOTO')}</span>
-                 </label>
-                 <button 
-                   onClick={() => setShowOBD(true)}
-                   className="px-4 py-2.5 bg-slate-800/40 hover:bg-cyan-500/10 border border-white/5 hover:border-cyan-500/30 rounded-xl text-[10px] font-black text-cyan-400 uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2"
-                 >
-                   <Activity size={14} />
-                   <span>{t('common.obd_breaker', 'OBD BREAKER')}</span>
-                 </button>
-               </div>
-
-               <div className="flex items-center gap-3">
-                 <AnimatePresence>
-                   {isValidVin && (
-                     <motion.div 
-                       initial={{ opacity: 0, scale: 0.8 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       exit={{ opacity: 0, scale: 0.8 }}
-                       className="flex items-center gap-2 px-2 py-1 bg-cyan-500/20 border border-cyan-500/30 rounded-lg"
-                     >
-                       <div className="w-3 h-3 rounded-full bg-cyan-500 flex items-center justify-center">
-                         <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={5}>
-                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                         </svg>
-                       </div>
-                       <span className="text-[8px] font-black text-cyan-400 uppercase tracking-widest">{t('common.verified', 'VERIFIED')}</span>
-                     </motion.div>
-                   )}
-
-                   {isValidObd && (
-                     <motion.button 
-                       initial={{ opacity: 0, scale: 0.8 }}
-                       animate={{ opacity: 1, scale: 1 }}
-                       exit={{ opacity: 0, scale: 0.8 }}
-                       onClick={() => setShowOBD(true)}
-                       className="flex items-center gap-2 px-3 py-1 bg-amber-500/20 border border-amber-500/30 rounded-lg hover:bg-amber-500/30 transition-all group"
-                     >
-                       <Activity size={12} className="text-amber-400 animate-pulse" />
-                       <span className="text-[8px] font-black text-amber-400 uppercase tracking-widest group-hover:text-amber-300">
-                         {t('common.obd_detected', 'OBD CODE DETECTED - ANALYZE?')}
-                       </span>
-                     </motion.button>
-                   )}
-                 </AnimatePresence>
-
-                 {state.userInput.trim().length > 0 && (
-                   <div className="flex items-center gap-3">
-                     <span className="text-[10px] font-mono text-slate-500 bg-black/20 px-2 py-1 rounded-lg">
-                       {state.userInput.trim().length}/17
-                     </span>
-                     <button 
-                       onClick={() => setState(prev => ({ ...prev, userInput: '', error: undefined }))}
-                       className="text-[10px] font-black text-red-400/60 hover:text-red-400 uppercase tracking-widest transition-colors"
-                     >
-                       {t('common.clear', 'CLEAR')}
-                     </button>
-                   </div>
-                 )}
-               </div>
-            </div>
-          </div>
-          
-          <div className="mt-8 space-y-4">
-            <div className="flex flex-wrap gap-2 px-2">
-              <div className="flex-1 min-w-[120px]">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.city', 'City')}</label>
-                <select 
-                  value={filterCity}
-                  onChange={(e) => setFilterCity(e.target.value)}
-                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  {uniqueCities.map(city => (
-                    <option key={city} value={city} className="bg-slate-900">{city === 'all' ? t('common.all_cities', 'All Cities') : city}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[120px]">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.specialty', 'Specialty')}</label>
-                <select 
-                  value={filterSpecialty}
-                  onChange={(e) => setFilterSpecialty(e.target.value)}
-                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  {uniqueSpecialties.map(spec => (
-                    <option key={spec} value={spec} className="bg-slate-900">{spec === 'all' ? t('common.all_specialties', 'All Specialties') : spec}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1 min-w-[120px]">
-                <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-1 block">{t('common.service', 'Service')}</label>
-                <select 
-                  value={filterService}
-                  onChange={(e) => setFilterService(e.target.value)}
-                  className="w-full bg-black/20 border border-white/5 rounded-xl px-3 py-2 text-[10px] font-bold text-white outline-none focus:border-cyan-500/50 transition-all"
-                >
-                  {uniqueServices.map(service => (
-                    <option key={service} value={service} className="bg-slate-900">{service === 'all' ? t('common.all_services', 'All Services') : service}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <VerifiedPartnersGrid livePartners={filteredLivePartners} />
-          </div>
-
-          <div className="h-40" />
-          </main>
-        )}
-        <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20 safe-area-pb">
-          <button 
-            onClick={startAnalysis} 
-            disabled={state.isAnalyzing || (!state.userInput.trim() && !state.selectedImage)} 
-            className={`w-full py-6 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95 shadow-cyan-900/20 ${state.isAnalyzing ? 'animate-pulse' : ''}`}
-          >
-            <div className="flex items-center gap-3">
-              {state.isAnalyzing && <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />}
-              <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
-                {state.isAnalyzing 
-                  ? `⚡ ${t('common.analyzing')}` 
-                  : `🔍 ${t('common.start_analysis')}`}
-              </span>
-            </div>
-          </button>
+    <div className="flex flex-col h-full bg-[#0a0f1e] text-white overflow-hidden animate-fade-in" dir={isRTL ? 'rtl' : 'ltr'}>
+      <SunBackground />
+      <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-slate-900/80 backdrop-blur-ultra sticky top-0 z-50">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => setState(prev => ({...prev, isStarted: false}))}>
+          <WizardIcon size={36} />
+          <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-300">REPAIR EXPERT</h1>
         </div>
-        {state.isAnalyzing && <ProtocolInitialization />}
-        {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} isPartnersLoading={isPartnersLoading} user={user} onLogin={handleLogin} /></div>}
-        
-        <ErrorModal 
-          isOpen={!!state.error && (state.errorCategory === 'network' || state.errorCategory === 'quota' || (state.errorCategory === 'validation' && !state.userInput.trim()))}
-          title={state.errorCategory === 'validation' ? t('common.input_required', 'INPUT REQUIRED') : "WIZARD CONNECTION ERROR"}
-          message={state.error || ''}
-          category={state.errorCategory}
-          onRetry={() => setState(prev => ({ ...prev, error: undefined, errorCategory: undefined }))}
-          onBack={() => {
-            setState(prev => ({ ...prev, error: undefined, errorCategory: undefined, isStarted: false }));
-            resetApp();
-          }}
-        />
+        <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[9px] font-black text-slate-400 uppercase">
+          {state.mode}
+        </div>
+      </header>
+      <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
+        <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md">
+          <textarea className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" placeholder="Describe your problem..." value={state.userInput} onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} />
+        </div>
+        <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
+          {state.image ? (
+            <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
+          ) : (
+            <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">Add Photo</span></div>
+          )}
+        </div>
+        {state.error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center text-red-400 text-xs font-bold">{state.error}</div>}
+        {PartnerProgramSection}
+        <div className="h-40" />
+      </main>
+      <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
+        <button onClick={startAnalysis} disabled={state.isAnalyzing} className="w-full py-6 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95">
+          <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
+            {state.isAnalyzing ? 'Processing...' : 'Start Session'}
+          </span>
+        </button>
       </div>
-    );
-  };
+      {state.result && <div className="fixed inset-0 z-[100] animate-modal-enter bg-[#0a0f1e]"><ResultView result={state.result} mode={state.mode} onReset={resetApp} recommendedPartners={recommendedPartners} /></div>}
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+    </div>
+  );
+};
 
 export default App;

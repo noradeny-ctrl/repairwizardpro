@@ -1,262 +1,182 @@
-import React from 'react';
 
-const WizardIcon: React.FC<{ size?: number; className?: string }> = ({ size, className = "" }) => (
-  <svg 
-    width={size || (className.includes('h-') ? undefined : 24)} 
-    height={size || (className.includes('h-') ? undefined : 24)} 
-    viewBox="0 0 200 220" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    <defs>
-      {/* Hyper-Realistic Bloom & Depth Filters */}
-      <filter id="master-bloom" x="-50%" y="-50%" width="200%" height="200%">
-        <feGaussianBlur stdDeviation="1" result="blur1" />
-        <feGaussianBlur stdDeviation="3" result="blur2" />
-        <feGaussianBlur stdDeviation="6" result="blur3" />
-        <feMerge>
-          <feMergeNode in="blur3" />
-          <feMergeNode in="blur2" />
-          <feMergeNode in="blur1" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-      
-      <linearGradient id="gold-master" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#FFD700" />
-        <stop offset="20%" stopColor="#FFFACD" />
-        <stop offset="50%" stopColor="#FFD700" />
-        <stop offset="80%" stopColor="#B8860B" />
-        <stop offset="100%" stopColor="#4D3300" />
-      </linearGradient>
+import React, { memo } from 'react';
 
-      <linearGradient id="cyan-master" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#00F0FF" />
-        <stop offset="40%" stopColor="#E0FFFF" />
-        <stop offset="60%" stopColor="#00F0FF" />
-        <stop offset="100%" stopColor="#003366" />
-      </linearGradient>
+const WizardIcon: React.FC<{ size?: number; className?: string }> = memo(({ size = 120, className = "" }) => {
+  return (
+    <div 
+      className={`relative flex flex-col items-center justify-center shrink-0 ${className}`}
+      style={{ 
+        width: size, 
+        height: size,
+        userSelect: 'none'
+      }}
+    >
+      <div 
+        className="relative flex items-center justify-center"
+        style={{
+          width: size,
+          height: size,
+        }}
+      >
+        <svg 
+          viewBox="0 0 200 200" 
+          fill="none" 
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full drop-shadow-[0_8px_16px_rgba(0,0,0,0.8)]"
+        >
+          <defs>
+            {/* High-quality glow filter */}
+            <filter id="optiGlow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
 
-      <radialGradient id="core-glow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="white" />
-        <stop offset="40%" stopColor="#00F0FF" />
-        <stop offset="100%" stopColor="transparent" />
-      </radialGradient>
-      <radialGradient id="sun-burst" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="#FEB109" stopOpacity="0.8" />
-        <stop offset="40%" stopColor="#FEB109" stopOpacity="0.3" />
-        <stop offset="100%" stopColor="transparent" />
-      </radialGradient>
-      
-      <pattern id="tech-grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#00F0FF" strokeWidth="0.2" strokeOpacity="0.2" />
-      </pattern>
-      <linearGradient id="paint-reflection" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="rgba(255, 255, 255, 0.3)" />
-        <stop offset="30%" stopColor="rgba(255, 255, 255, 0.1)" />
-        <stop offset="70%" stopColor="rgba(0, 0, 0, 0.2)" />
-        <stop offset="100%" stopColor="rgba(0, 0, 0, 0.4)" />
-      </linearGradient>
+            {/* Bloom for eyes */}
+            <filter id="eyeBloom" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+            
+            <linearGradient id="ironGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#cbd5e1" />
+              <stop offset="40%" stopColor="#475569" />
+              <stop offset="60%" stopColor="#1e293b" />
+              <stop offset="100%" stopColor="#0f172a" />
+            </linearGradient>
 
-      <radialGradient id="lens-flare" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="white" stopOpacity="0.9" />
-        <stop offset="20%" stopColor="#00F0FF" stopOpacity="0.4" />
-        <stop offset="100%" stopColor="transparent" />
-      </radialGradient>
-      <radialGradient id="ground-shadow" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stopColor="black" stopOpacity="0.6" />
-        <stop offset="100%" stopColor="transparent" />
-      </radialGradient>
-    </defs>
+            <linearGradient id="chiselGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.4" />
+              <stop offset="50%" stopColor="#ffffff" stopOpacity="0" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0.4" />
+            </linearGradient>
 
-    {/* Hexagonal Tech-Crest Shield - Beveled Physical Look */}
-    <g filter="url(#master-bloom)">
-      {/* Outer Rim */}
-      <path 
-        d="M100 8L182 49V151L100 192L18 151V49L100 8Z" 
-        fill="#1a1a1a" 
-      />
-      {/* Main Shield */}
-      <path 
-        d="M100 10L180 50V150L100 190L20 150V50L100 10Z" 
-        stroke="url(#gold-master)" 
-        strokeWidth="6" 
-        fill="rgba(10, 14, 20, 0.9)"
-        strokeLinejoin="round"
-      />
-      {/* Tech Grid Background */}
-      <path 
-        d="M100 10L180 50V150L100 190L20 150V50L100 10Z" 
-        fill="url(#tech-grid)"
-      />
-      {/* Inner Bevel */}
-      <path 
-        d="M100 14L176 52V148L100 186L24 148V52L100 14Z" 
-        stroke="white" 
-        strokeWidth="0.5" 
-        strokeOpacity="0.1"
-        fill="none"
-      />
-      {/* Glowing Circuitry Patterns on Shield */}
-      <g stroke="#FFD700" strokeWidth="1" strokeOpacity="0.4">
-        <path d="M40 60H60M140 60H160M40 140H60M140 140H160" />
-        <path d="M100 20V40M100 160V180" />
-        <circle cx="60" cy="60" r="1.5" fill="#FFD700" />
-        <circle cx="140" cy="60" r="1.5" fill="#FFD700" />
-        <circle cx="60" cy="140" r="1.5" fill="#FFD700" />
-        <circle cx="140" cy="140" r="1.5" fill="#FFD700" />
-      </g>
-    </g>
+            <linearGradient id="neonGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#39ff14" />
+              <stop offset="100%" stopColor="#166534" />
+            </linearGradient>
+          </defs>
 
-    {/* Magic Tech Particles (Wizardry Essence) */}
-    <g filter="url(#master-bloom)">
-      <circle cx="60" cy="120" r="1" fill="white" className="animate-pulse" />
-      <circle cx="140" cy="120" r="1" fill="white" className="animate-pulse" />
-      <circle cx="80" cy="110" r="0.8" fill="#00F0FF" />
-      <circle cx="120" cy="110" r="0.8" fill="#00F0FF" />
-      <circle cx="100" cy="95" r="1.2" fill="white" />
-    </g>
-
-    {/* Ground Reflection & Shadow */}
-    <ellipse cx="100" cy="195" rx="70" ry="10" fill="url(#ground-shadow)" />
-    <g opacity="0.3">
-      <ellipse cx="100" cy="195" rx="60" ry="8" fill="url(#cyan-master)" filter="blur(10px)" />
-    </g>
-
-    {/* Majestic Sun Burst (Background) */}
-    <g filter="url(#master-bloom)" opacity="0.8">
-      {/* Central Glow */}
-      <circle cx="100" cy="120" r="40" fill="url(#sun-burst)" />
-      {/* Radiating Sun Rays */}
-      <g stroke="#FEB109" strokeWidth="0.5" strokeOpacity="0.5">
-        {[...Array(21)].map((_, i) => (
-          <line 
-            key={i} 
-            x1="100" 
-            y1="120" 
-            x2={100 + 80 * Math.cos((i * 360 / 21 - 90) * Math.PI / 180)} 
-            y2={120 + 80 * Math.sin((i * 360 / 21 - 90) * Math.PI / 180)} 
-          />
-        ))}
-      </g>
-    </g>
-
-    {/* Hyper-Realistic Tesla-Style Front Silhouette */}
-    <g filter="url(#master-bloom)" opacity="0.95">
-      {/* Upper Body & Roofline - Sleeker Tesla Curve */}
-      <path 
-        d="M50 135C50 135 60 100 100 100C140 100 150 135 150 135" 
-        stroke="url(#cyan-master)" 
-        strokeWidth="2" 
-        fill="none"
-        strokeLinecap="round"
-      />
-      {/* Windshield & Pillars - Realistic Glass Effect */}
-      <path 
-        d="M58 135C58 135 68 108 100 108C132 108 142 135 142 135" 
-        fill="url(#glass-gradient)" 
-        stroke="url(#cyan-master)" 
-        strokeWidth="1"
-      />
-      <linearGradient id="glass-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="rgba(0, 240, 255, 0.2)" />
-        <stop offset="50%" stopColor="rgba(255, 255, 255, 0.4)" />
-        <stop offset="100%" stopColor="rgba(0, 240, 255, 0.1)" />
-      </linearGradient>
-      
-      {/* Main Front Body Panel - Smooth Tesla Paint */}
-      <path 
-        d="M35 170C35 170 38 135 50 135H150C162 135 165 170 165 170" 
-        fill="url(#cyan-master)" 
-      />
-      <path 
-        d="M35 170C35 170 38 135 50 135H150C162 135 165 170 165 170" 
-        fill="url(#paint-reflection)" 
-      />
-      
-      {/* Hood Lines - Minimalist Tesla Creases */}
-      <path d="M75 135L85 155" stroke="white" strokeWidth="0.6" strokeOpacity="0.3" />
-      <path d="M125 135L115 155" stroke="white" strokeWidth="0.6" strokeOpacity="0.3" />
-
-      {/* Kurdish Flag Emblem on Hood - 3D Badge Look */}
-      <g transform="translate(100, 155)">
-        {/* Badge Rim (Chrome) */}
-        <circle r="6" fill="url(#gold-master)" />
-        <circle r="5.2" fill="#111" />
-        {/* Flag Base (Circle) */}
-        <circle r="5" fill="white" />
-        <clipPath id="flag-clip-3d">
-          <circle r="5" />
-        </clipPath>
-        <g clipPath="url(#flag-clip-3d)">
-          <rect x="-5" y="-5" width="10" height="3.33" fill="#ED2024" /> {/* Red */}
-          <rect x="-5" y="-1.67" width="10" height="3.33" fill="white" /> {/* White */}
-          <rect x="-5" y="1.66" width="10" height="3.34" fill="#278E43" /> {/* Green */}
-          {/* Kurdish Sun (Yellow) */}
-          <circle r="1.8" fill="#FEB109" />
-          <g stroke="#FEB109" strokeWidth="0.3">
-            {[...Array(21)].map((_, i) => (
-              <line key={i} x1="0" y1="0" x2="0" y2="-2.5" transform={`rotate(${i * (360 / 21)})`} />
+          {/* Background Gear - STATIC */}
+          <g transform="translate(100, 105)">
+            <circle cx="0" cy="0" r="70" fill="#0a0f1e" stroke="#1e293b" strokeWidth="3" />
+            {[...Array(12)].map((_, i) => (
+              <rect 
+                key={i}
+                x="-12" y="-80" width="24" height="12" 
+                fill="#1e293b" 
+                rx="2"
+                transform={`rotate(${i * 30})`}
+              />
             ))}
+            <circle cx="0" cy="0" r="56" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="3 6" />
           </g>
-          {/* Badge Reflection */}
-          <path d="M-4 -4C-4 -4 -2 -5 2 -3" stroke="white" strokeWidth="0.5" strokeOpacity="0.6" fill="none" />
-        </g>
-      </g>
 
-      {/* Tesla-Style Sleek LED Headlights */}
-      <g>
-        {/* Left Headlight */}
-        <path 
-          d="M40 145C40 145 55 140 80 148L78 152C78 152 55 145 42 150Z" 
-          fill="#050505" 
-          stroke="url(#cyan-master)" 
-          strokeWidth="0.5" 
-        />
-        <path 
-          d="M45 147C45 147 60 143 75 149" 
-          stroke="#00F0FF" 
-          strokeWidth="1.5" 
-          fill="none" 
-          filter="url(#master-bloom)" 
-        />
-        <circle cx="50" cy="147" r="1" fill="white" filter="url(#master-bloom)" />
-        
-        {/* Right Headlight */}
-        <path 
-          d="M160 145C160 145 145 140 120 148L122 152C122 152 145 145 158 150Z" 
-          fill="#050505" 
-          stroke="url(#cyan-master)" 
-          strokeWidth="0.5" 
-        />
-        <path 
-          d="M155 147C155 147 140 143 125 149" 
-          stroke="#00F0FF" 
-          strokeWidth="1.5" 
-          fill="none" 
-          filter="url(#master-bloom)" 
-        />
-        <circle cx="150" cy="147" r="1" fill="white" filter="url(#master-bloom)" />
-      </g>
+          {/* Metallic 'W' - Grounded and Static */}
+          <g transform="translate(100, 160)">
+            <path 
+              d="M-45 -20 L-20 25 L0 -5 L20 25 L45 -20" 
+              stroke="#0f172a" 
+              strokeWidth="18" 
+              strokeLinejoin="round" 
+              strokeLinecap="round" 
+            />
+            <path 
+              d="M-45 -20 L-20 25 L0 -5 L20 25 L45 -20" 
+              stroke="url(#ironGrad)" 
+              strokeWidth="12" 
+              strokeLinejoin="round" 
+              strokeLinecap="round" 
+            />
+            {/* Chisel effect highlight */}
+            <path 
+              d="M-45 -20 L-20 25 L0 -5 L20 25 L45 -20" 
+              stroke="url(#chiselGrad)" 
+              strokeWidth="12" 
+              strokeLinejoin="round" 
+              strokeLinecap="round" 
+              fill="none"
+            />
+          </g>
 
-      {/* Lower Bumper & Aggressive Air Intakes */}
-      <path d="M40 165H160V180C160 185 155 190 150 190H50C45 190 40 185 40 180V165Z" fill="url(#cyan-master)" fillOpacity="0.2" />
-      {/* Side Intakes */}
-      <path d="M45 170H70V182C70 182 45 182 45 175V170Z" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
-      <path d="M155 170H130V182C130 182 155 182 155 175V170Z" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
-      {/* Center Intake */}
-      <rect x="78" y="172" width="44" height="12" rx="3" fill="#000" fillOpacity="0.8" stroke="url(#cyan-master)" strokeWidth="0.5" />
-      
-      {/* Front Splitter - Carbon Fiber Look */}
-      <path d="M35 190H165V194H35V190Z" fill="#111" stroke="url(#cyan-master)" strokeWidth="0.5" />
-      <path d="M35 191H165" stroke="white" strokeWidth="0.2" strokeOpacity="0.2" />
-      
-      {/* Tires/Wheels (Peeking from bottom) */}
-      <rect x="42" y="180" width="15" height="10" fill="#111" />
-      <rect x="143" y="180" width="15" height="10" fill="#111" />
-    </g>
-  </svg>
-);
+          {/* Owl Character - STATIC */}
+          <g transform="translate(100, 85)">
+            {/* Body */}
+            <path 
+              d="M-34 10 C-45 45 -25 80 0 80 C25 80 45 45 34 10 Z" 
+              fill="#0f172a" 
+              stroke="#334155" 
+              strokeWidth="2" 
+            />
+
+            {/* Wing Detail */}
+            <path 
+              d="M-34 5 Q-65 35 -40 75" 
+              fill="none" 
+              stroke="url(#ironGrad)" 
+              strokeWidth="8" 
+              strokeLinecap="round" 
+            />
+            
+            {/* Mini Gears for Mechanical Vibe */}
+            <g fill="#1e293b" stroke="#475569" strokeWidth="1">
+              <circle cx="-28" cy="35" r="8" />
+              <circle cx="-18" cy="55" r="6" />
+              <circle cx="-32" cy="50" r="4" />
+            </g>
+
+            {/* Glow Accents - STATIC */}
+            <g filter="url(#optiGlow)">
+              <path d="M-38 70 Q-55 90 -50 115" stroke="url(#neonGreen)" strokeWidth="3" strokeLinecap="round" />
+              <path d="M-32 78 Q-42 100 -32 122" stroke="url(#neonGreen)" strokeWidth="2" strokeLinecap="round" opacity="0.6" />
+              <circle cx="-50" cy="115" r="2" fill="#39ff14" />
+              <circle cx="-32" cy="122" r="1.5" fill="#39ff14" />
+            </g>
+
+            {/* Head */}
+            <path 
+              d="M-40 -15 Q-40 -40 -18 -48 L0 -35 L18 -48 Q40 -40 40 -15 Q40 12 0 20 Q-40 12 -40 -15" 
+              fill="#0f172a" 
+              stroke="#475569" 
+              strokeWidth="2.5" 
+            />
+
+            {/* Mechanical Ears */}
+            <path d="M-30 -42 L-48 -75" stroke="#475569" strokeWidth="5" strokeLinecap="round" />
+            <path d="M-30 -42 L-48 -75" stroke="#39ff14" strokeWidth="1.5" strokeLinecap="round" filter="url(#optiGlow)" />
+            <path d="M30 -42 L48 -75" stroke="#475569" strokeWidth="5" strokeLinecap="round" />
+            <path d="M30 -42 L48 -75" stroke="#39ff14" strokeWidth="1.5" strokeLinecap="round" filter="url(#optiGlow)" />
+
+            {/* Eyes - The main focus */}
+            <g filter="url(#eyeBloom)">
+              <circle cx="-20" cy="-18" r="10" fill="#000" stroke="#39ff14" strokeWidth="2.5" />
+              <circle cx="-20" cy="-18" r="4" fill="#39ff14" />
+              
+              <circle cx="20" cy="-18" r="10" fill="#000" stroke="#39ff14" strokeWidth="2.5" />
+              <circle cx="20" cy="-18" r="4" fill="#39ff14" />
+
+              {/* Brow lines */}
+              <path d="M-35 -35 Q-20 -42 -8 -35" stroke="#39ff14" strokeWidth="2.5" strokeLinecap="round" />
+              <path d="M35 -35 Q20 -42 8 -35" stroke="#39ff14" strokeWidth="2.5" strokeLinecap="round" />
+            </g>
+
+            {/* Beak */}
+            <path d="M-5 -2 L0 10 L5 -2 Z" fill="#475569" />
+          </g>
+
+          {/* Gripping Claws */}
+          <g transform="translate(100, 160)" stroke="#1e293b" strokeWidth="5" strokeLinecap="round">
+            <path d="M-12 -8 L-15 4" stroke="#475569" />
+            <path d="M-6 -8 L-6 6" stroke="#475569" />
+            <path d="M12 -8 L15 4" stroke="#475569" />
+            <path d="M6 -8 L6 6" stroke="#475569" />
+          </g>
+        </svg>
+      </div>
+    </div>
+  );
+});
 
 export default WizardIcon;

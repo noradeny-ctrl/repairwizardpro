@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repair Wizard - Admin Panel</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f8f9fa; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); padding: 20px; color: #333; }
+        .container { max-width: 900px; margin: 0 auto; }
+        
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width { grid-column: span 2; }
+        
+        label { display: block; font-weight: 600; font-size: 0.9em; margin-bottom: 5px; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; background: #fff; }
+        
+        button#addBtn { width: 100%; padding: 12px; background: #28a745; color: white; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; margin-top: 15px; }
+        button#addBtn:hover { background: #218838; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .tag { background: #e9ecef; padding: 2px 6px; border-radius: 4px; font-size: 0.8em; margin-right: 4px; }
+        .delete-btn { background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card">
+        <h2>⚡ Add Verified Partner</h2>
+        <div class="grid">
+            <div class="full-width">
+                <label>Shop Business Name</label>
+                <input type="text" id="pName" placeholder="e.g. Noor Auto Repair">
+            </div>
+
+            <div class="full-width">
+                <label>Services (comma separated)</label>
+                <input type="text" id="pSpecs" placeholder="e.g. A/C Repair, Key Programming, Oil Change">
+            </div>
+
+            <div>
+                <label for="pCity">Select City</label>
+                <select id="pCity" title="Select City">
+                    <option value="Duhok">Duhok</option>
+                    <option value="Erbil">Erbil (Hawler)</option>
+                    <option value="Sulaymaniyah">Sulaymaniyah</option>
+                    <option value="Zakho">Zakho</option>
+                    <option value="Akre">Akre</option>
+                    <option value="Soran">Soran</option>
+                    <option value="Kirkuk">Kirkuk</option>
+                    <option value="Halabja">Halabja</option>
+                    <option value="Nashville">Nashville (USA - Test)</option>
+                </select>
+            </div>
+            
+            <div>
+                <label for="pDuration">Subscription Duration</label>
+                <select id="pDuration" title="Subscription Duration">
+                    <option value="1">1 Month</option>
+                    <option value="3">3 Months</option>
+                    <option value="6">6 Months</option>
+                    <option value="12">1 Year</option>
+                </select>
+            </div>
+
+            <div>
+                <label>Phone Display</label>
+                <input type="text" id="pPhone" placeholder="(0750) ...">
+            </div>
+
+            <div>
+                <label>WhatsApp (Clean Number)</label>
+                <input type="number" id="pWhatsapp" placeholder="964750XXXXXXX">
+            </div>
+
+            <div class="full-width">
+                 <button id="addBtn">✨ Add Partner to App</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>📋 Live Partners List</h2>
+        <table id="partnerTable">
+            <thead>
+                <tr>
+                    <th>Shop & City</th>
+                    <th>Expires On</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+  // YOUR CONFIG
+  const firebaseConfig = {
+    apiKey: "AIzaSyAzmmMPD5BDzeolncRicHl6S0qMPsfq9gs",
+    authDomain: "repairwizard-db.firebaseapp.com",
+    projectId: "repairwizard-db",
+    storageBucket: "repairwizard-db.firebasestorage.app",
+    messagingSenderId: "614298841525",
+    appId: "1:614298841525:web:c49e2e60fa2c9da79869fc"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const partnersRef = collection(db, "partners");
+
+  // 👇 AUTO-COORDINATES DICTIONARY 👇
+  const cityCoordinates = {
+      "Duhok": { lat: 36.8679, lng: 42.9489 },
+      "Erbil": { lat: 36.1901, lng: 44.0091 },
+      "Sulaymaniyah": { lat: 35.5537, lng: 45.4329 },
+      "Zakho": { lat: 37.1469, lng: 42.6859 },
+      "Akre": { lat: 36.7414, lng: 43.8928 },
+      "Soran": { lat: 36.6543, lng: 44.5385 },
+      "Kirkuk": { lat: 35.4724, lng: 44.3756 },
+      "Halabja": { lat: 35.1778, lng: 45.9861 },
+      "Nashville": { lat: 36.1627, lng: -86.7816 } // For your testing
+  };
+
+  // --- ADD PARTNER ---
+  document.getElementById('addBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('addBtn');
+      const name = document.getElementById('pName').value;
+      const selectedCity = document.getElementById('pCity').value;
+
+      if(!name) return alert("Please enter a shop name!");
+
+      btn.innerText = "Saving...";
+      btn.disabled = true;
+
+      // 1. Get Coordinates automatically based on city name
+      const coords = cityCoordinates[selectedCity] || { lat: 0, lng: 0 };
+
+      // 2. Process Specialties
+      const rawSpecs = document.getElementById('pSpecs').value;
+      const specsArray = rawSpecs.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
+      const months = parseInt(document.getElementById('pDuration').value);
+      const expiryDate = new Date();
+      expiryDate.setMonth(expiryDate.getMonth() + months); 
+
+      try {
+          await addDoc(partnersRef, {
+              business_name: name,
+              location: {
+                  city: selectedCity, // Save the name
+                  coordinates: {      // Save the auto-generated numbers
+                      latitude: coords.lat,
+                      longitude: coords.lng
+                  }
+              },
+              contact: { 
+                  phone_display: document.getElementById('pPhone').value,
+                  whatsapp_link: "https://wa.me/" + document.getElementById('pWhatsapp').value
+              },
+              specialties: specsArray,
+              subscription_end_date: expiryDate.toISOString().slice(0, 10),
+              is_verified: true,
+              createdAt: new Date().toISOString()
+          });
+          
+          alert("✅ Success!");
+          document.getElementById('pName').value = '';
+          document.getElementById('pSpecs').value = '';
+          document.getElementById('pPhone').value = '';
+          document.getElementById('pWhatsapp').value = '';
+      } catch (e) {
+          alert("Error: " + e.message);
+      }
+      btn.innerText = "✨ Add Partner to App";
+      btn.disabled = false;
+  });
+
+  // --- DELETE PARTNER ---
+  window.deletePartner = async (id) => {
+      if(confirm("Are you sure?")) await deleteDoc(doc(db, "partners", id));
+  };
+
+  // --- LIVE LIST ---
+  onSnapshot(partnersRef, (snapshot) => {
+      const tbody = document.getElementById('tableBody');
+      tbody.innerHTML = ''; 
+
+      snapshot.forEach((doc) => {
+          const p = doc.data();
+          const today = new Date().toISOString().slice(0, 10);
+          const isExpired = p.subscription_end_date < today;
+          
+          let tagsHtml = '';
+          if(Array.isArray(p.specialties)) tagsHtml = p.specialties.map(t => `<span class="tag">${t}</span>`).join('');
+
+          tbody.innerHTML += `
+              <tr>
+                  <td>
+                      <strong>${p.business_name || 'Unnamed Shop'}</strong> <small>(${p.location?.city || 'Unknown'})</small>
+                      <br>${tagsHtml}
+                      ${isExpired ? '<br><span style="color:red;font-weight:bold;">EXPIRED</span>' : ''}
+                  </td>
+                  <td>${p.subscription_end_date || 'No Date'}</td>
+                  <td>
+                      <button class="delete-btn" onclick="deletePartner('${doc.id}')">Remove</button>
+                  </td>
+              </tr>
+          `;
+      });
+  });
+
+</script>
+
+</body>
+</html>
