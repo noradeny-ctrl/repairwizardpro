@@ -1,6 +1,6 @@
 {
-  "name": "Repair wizard",
-  "description": "Your friendly neighborhood master for quick repair advice in Badini Kurdish.",
+  "name": "Repair Wizard ",
+  "description": "Elite AI technical consultant and automotive import broker specializing in diagnostics, VIN scanning, and USA-to-Kurdistan vehicle imports.",
   "requestFramePermissions": [
     "camera",
     "geolocation"

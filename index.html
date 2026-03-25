@@ -71,6 +71,15 @@
 }
 </script>
 <link rel="stylesheet" href="/index.css">
+  <style>
+    @keyframes scan-line {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(400%); }
+    }
+    .animate-scan-line {
+      animation: scan-line 3s linear infinite;
+    }
+  </style>
 </head>
 <body class="h-full text-slate-100">
     <div id="root" class="h-full"></div>

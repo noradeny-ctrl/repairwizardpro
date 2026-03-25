@@ -1,5 +1,7 @@
 
 import React, { useState, useRef, memo, useCallback, useMemo, useEffect } from 'react';
+import i18n from './i18n';
+import { useTranslation } from 'react-i18next';
 import { RegionMode, AppState, Partner, Coordinates } from './types';
 import { analyzeProblem, WizardError } from './services/geminiService';
 import ResultView from './components/ResultView';
@@ -132,10 +134,12 @@ const App: React.FC = () => {
     mode: RegionMode.WESTERN,
     isAnalyzing: false,
     isStarted: false,
+    isAuthModalOpen: false,
   });
 
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [livePartners, setLivePartners] = useState<Partner[]>(partnersData);
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -154,45 +158,49 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => setState(prev => ({ ...prev, image: e.target?.result as string, error: undefined }));
+    reader.onload = (e) => setState(prev => ({ ...prev, selectedImage: e.target?.result as string, error: undefined }));
     reader.readAsDataURL(file);
   }, []);
 
   const getErrorMessage = useCallback((error: any, mode: RegionMode) => {
     if (error instanceof WizardError) {
-      if (mode !== RegionMode.WESTERN) {
-        switch (error.category) {
-          case 'network': return mode === RegionMode.ARABIC ? "أنت غير متصل بالإنترنت." : "تۆ پەیوەست نیت بە ئینتەرنێتەوە.";
-          case 'quota': return mode === RegionMode.ARABIC ? "طلبات كثيرة جداً." : "داواکارییەکان زۆرن.";
-          default: return mode === RegionMode.ARABIC ? "حدث خطأ ما." : "کێشەیەک ڕوویدا.";
-        }
+      switch (error.category) {
+        case 'network': return t('common.error_hint_network');
+        case 'quota': return t('common.error_hint_quota');
+        case 'safety': return t('common.error_hint_safety');
+        default: return t('common.error_title');
       }
-      return error.message;
     }
-    return "An unexpected error occurred.";
-  }, []);
+    return t('common.error_hint_generic');
+  }, [t]);
 
   const startAnalysis = useCallback(async () => {
-    if (!state.userInput.trim() && !state.image) {
+    if (!state.userInput.trim() && !state.selectedImage) {
       setState(prev => ({ ...prev, error: "Please provide a description or an image." }));
       return;
     }
     setState(prev => ({ ...prev, isAnalyzing: true, result: undefined, error: undefined }));
     try {
-      const pureBase64 = state.image?.split(',')[1];
+      const pureBase64 = state.selectedImage?.split(',')[1];
       const analysis = await analyzeProblem(state.userInput, pureBase64, state.mode);
       setState(prev => ({ ...prev, isAnalyzing: false, result: analysis }));
     } catch (err: any) {
       setState(prev => ({ ...prev, isAnalyzing: false, error: getErrorMessage(err, state.mode) }));
     }
-  }, [state.userInput, state.image, state.mode, getErrorMessage]);
+  }, [state.userInput, state.selectedImage, state.mode, getErrorMessage]);
 
   const resetApp = useCallback(() => {
-    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, image: undefined, userInput: '', error: undefined }));
+    setState(prev => ({ ...prev, isAnalyzing: false, result: undefined, selectedImage: undefined, userInput: '', error: undefined }));
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
   const setInitialMode = useCallback((mode: RegionMode) => {
+    let lang = 'en';
+    if (mode === RegionMode.SORANI) lang = 'ku-SO';
+    else if (mode === RegionMode.BADINAN) lang = 'ku-BA';
+    else if (mode === RegionMode.ARABIC) lang = 'ar';
+    
+    i18n.changeLanguage(lang);
     setState(prev => ({ ...prev, mode, isStarted: true, error: undefined }));
   }, []);
 
@@ -227,11 +235,11 @@ const App: React.FC = () => {
   const PartnerProgramSection = useMemo(() => (
     <div className="mt-12 bg-slate-900/60 border border-white/5 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10"><PartnerBadge size={100} /></div>
-      <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">VERIFIED PARTNER PROGRAM</h3>
-      <p className="text-sm text-slate-300 leading-relaxed mb-6">Join our network as a certified technician.</p>
-      <a href="mailto:support@repairwizard.net" className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors">Contact Support</a>
+      <h3 className="text-[10px] font-black tracking-[0.4em] text-cyan-400 uppercase mb-4">{t('common.verified_partner_program')}</h3>
+      <p className="text-sm text-slate-300 leading-relaxed mb-6">{t('common.join_network_desc')}</p>
+      <a href="mailto:support@repairwizard.net" className="text-white text-xs font-bold border-b border-cyan-500/40 pb-1 hover:text-cyan-400 transition-colors">{t('common.contact_support')}</a>
     </div>
-  ), []);
+  ), [t]);
 
   if (!state.isStarted) {
     return (
@@ -256,7 +264,7 @@ const App: React.FC = () => {
       <header className="px-6 pt-12 pb-4 flex justify-between items-center border-b border-white/5 bg-slate-900/80 backdrop-blur-ultra sticky top-0 z-50">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => setState(prev => ({...prev, isStarted: false}))}>
           <WizardIcon size={36} />
-          <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-300">REPAIR EXPERT</h1>
+          <h1 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-300">{t('common.repair_expert') || 'REPAIR EXPERT'}</h1>
         </div>
         <div className="px-3 py-1 bg-white/5 rounded-full border border-white/10 text-[9px] font-black text-slate-400 uppercase">
           {state.mode}
@@ -264,13 +272,13 @@ const App: React.FC = () => {
       </header>
       <main className="flex-1 overflow-y-auto p-6 space-y-6 hide-scrollbar relative z-10">
         <div className="bg-slate-800/40 border border-white/5 rounded-[2.5rem] p-6 shadow-2xl backdrop-blur-md">
-          <textarea className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" placeholder="Describe your problem..." value={state.userInput} onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} />
+          <textarea className="w-full bg-transparent border-none text-white focus:ring-0 placeholder-slate-600 resize-none min-h-[140px] text-lg font-medium" placeholder={t('common.obd_placeholder')} value={state.userInput} onChange={(e) => setState(prev => ({ ...prev, userInput: e.target.value, error: undefined }))} />
         </div>
         <div onClick={() => fileInputRef.current?.click()} className="group aspect-video rounded-[2.5rem] border-2 border-dashed border-slate-700 bg-slate-800/20 flex flex-col items-center justify-center overflow-hidden hover:border-emerald-500/50 transition-all cursor-pointer relative">
-          {state.image ? (
-            <img src={state.image} className="w-full h-full object-cover" alt="Preview" decoding="async" />
+          {state.selectedImage ? (
+            <img src={state.selectedImage} className="w-full h-full object-cover" alt="Preview" decoding="async" />
           ) : (
-            <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">Add Photo</span></div>
+            <div className="flex flex-col items-center gap-2 opacity-40"><span className="text-3xl">📸</span><span className="text-[10px] font-bold uppercase">{t('common.add_photo')}</span></div>
           )}
         </div>
         {state.error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-center text-red-400 text-xs font-bold">{state.error}</div>}
@@ -280,7 +288,7 @@ const App: React.FC = () => {
       <div className="bg-slate-900/95 backdrop-blur-ultra rounded-t-[3rem] px-8 pt-10 pb-12 border-t border-white/5 shadow-2xl relative z-20">
         <button onClick={startAnalysis} disabled={state.isAnalyzing} className="w-full py-6 bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 transition-all rounded-[2rem] flex items-center justify-center shadow-xl active:scale-95">
           <span className="font-black tracking-[0.2em] uppercase text-xs text-white">
-            {state.isAnalyzing ? 'Processing...' : 'Start Session'}
+            {state.isAnalyzing ? t('common.analyzing') : t('common.start_analysis')}
           </span>
         </button>
       </div>

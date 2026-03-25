@@ -1,0 +1,216 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - uid: string (required, immutable) - User's unique ID
+    //   - email: string (required, email format) - User's email
+    //   - displayName: string (optional) - User's name
+    //   - photoURL: string (optional, URL format) - Profile picture URL
+    //   - role: string (required, enum: ['user', 'admin', 'partner']) - User's role
+    //   - createdAt: timestamp (required, immutable) - Creation time
+    //
+    // Collection: /scans/{scanId}
+    // Document ID: Auto-generated
+    // Fields:
+    //   - uid: string (required, immutable) - User who performed the scan
+    //   - code: string (required) - OBD code
+    //   - translation: string (required, max 1000 chars) - Non-technical explanation
+    //   - threatLevel: string (required, enum: ['STABLE', 'WARNING', 'CRITICAL'])
+    //   - partName: string (required)
+    //   - estimatedCost: string (required)
+    //   - timestamp: timestamp (required, immutable)
+    //
+    // Collection: /partnerApplications/{applicationId}
+    // Document ID: Auto-generated
+    // Fields:
+    //   - userId: string (required, immutable) - User who submitted the application
+    //   - companyName: string (required, max 100 chars)
+    //   - businessType: string (required, enum: ['auction', 'logistics', 'technical', 'oem'])
+    //   - fullName: string (required, max 100 chars)
+    //   - email: string (required, email format)
+    //   - phone: string (required, max 20 chars)
+    //   - status: string (required, enum: ['pending', 'reviewed', 'approved', 'rejected'])
+    //   - submittedAt: timestamp (required, immutable)
+    //
+    // Collection: /repairs/{repairId}
+    // Document ID: Auto-generated
+    // Fields:
+    //   - id: string
+    //   - userId: string (can be 'anonymous')
+    //   - issueDescription: string
+    //   - aiDiagnosis: string
+    //   - status: string
+    //   - createdAt: string (ISO date)
+    //
+    // Collection: /partners/{partnerId}
+    // Document ID: Auto-generated or from application ID
+    // Fields:
+    //   - business_name: string
+    //   - is_verified: bool
+    //   - contact: map
+    //   - location: map
+    //   - specialties: list
+    //   - services_offered: list
+    //   - policy: map
+    //   - subscription_end_date: string (ISO date)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "noradeny@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data, userId) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'photoURL', 'role', 'createdAt']) &&
+             data.uid == userId &&
+             isValidEmail(data.email) &&
+             (data.role in ['user', 'admin', 'partner']) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidScan(data) {
+      return hasOnlyAllowedFields(['uid', 'code', 'translation', 'threatLevel', 'partName', 'estimatedCost', 'timestamp']) &&
+             data.uid == request.auth.uid &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 10 &&
+             data.translation is string && data.translation.size() < 1000 &&
+             (data.threatLevel in ['STABLE', 'WARNING', 'CRITICAL']) &&
+             data.partName is string &&
+             data.estimatedCost is string &&
+             data.timestamp is timestamp;
+    }
+
+    function isValidPartnerApp(data) {
+      return hasOnlyAllowedFields(['userId', 'companyName', 'businessType', 'fullName', 'email', 'phone', 'status', 'submittedAt']) &&
+             data.userId == request.auth.uid &&
+             data.companyName is string && data.companyName.size() < 100 &&
+             (data.businessType in ['auction', 'logistics', 'technical', 'oem']) &&
+             data.fullName is string && data.fullName.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.phone is string && data.phone.size() < 20 &&
+             (data.status in ['pending', 'reviewed', 'approved', 'rejected']) &&
+             data.submittedAt is timestamp;
+    }
+
+    function isValidRepair(data) {
+      return hasOnlyAllowedFields(['id', 'userId', 'issueDescription', 'aiDiagnosis', 'status', 'createdAt']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.issueDescription is string &&
+             data.aiDiagnosis is string &&
+             data.status is string &&
+             data.createdAt is string;
+    }
+
+    function isValidEstimate(data) {
+      return hasOnlyAllowedFields(['userId', 'price', 'total', 'vehicleType', 'port', 'titleType', 'date', 'timestamp']) &&
+             data.userId == request.auth.uid &&
+             data.price is number &&
+             data.total is number &&
+             (data.vehicleType in ['SEDAN', 'SUV', 'PICKUP']) &&
+             (data.port in ['MERSIN', 'JEBEL_ALI', 'UMM_QASR']) &&
+             (data.titleType in ['CLEAN', 'SALVAGE']) &&
+             data.date is string &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if (isOwner(userId) && isValidUser(request.resource.data, userId) && request.resource.data.role == 'user') || (isAdmin() && isValidUser(request.resource.data, userId));
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data, userId) && request.resource.data.role == resource.data.role) || (isAdmin() && isValidUser(request.resource.data, userId));
+      allow delete: if isAdmin();
+    }
+
+    match /scans/{scanId} {
+      allow read: if isAuthenticated() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidScan(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.uid == request.auth.uid);
+    }
+
+    match /partnerApplications/{applicationId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidPartnerApp(request.resource.data) && request.resource.data.status == 'pending';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /partners/{partnerId} {
+      allow read: if true; // Publicly readable
+      allow write: if isAdmin();
+
+      match /statusHistory/{historyId} {
+        allow read: if isAdmin() || isOwner(partnerId);
+        allow create: if isAdmin();
+        allow update, delete: if false;
+      }
+    }
+
+    match /repairs/{repairId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isValidRepair(request.resource.data);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /estimates/{estimateId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidEstimate(request.resource.data);
+      allow update: if false;
+      allow delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

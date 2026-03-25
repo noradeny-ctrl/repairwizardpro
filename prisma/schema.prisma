@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String         @id @default(uuid())
+  email          String         @unique
+  hashedPassword String
+  role           String         @default("PendingUser")
+  createdAt      DateTime       @default(now())
+  dealerProfile  DealerProfile?
+  orders         VehicleOrder[]
+}
+
+model DealerProfile {
+  id                 String             @id @default(uuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id])
+  dealershipName     String
+  country            String
+  city               String
+  contactPhone       String
+  businessLicenseUrl String
+  verificationStatus String             @default("PENDING")
+  accountFee         Float              @default(500)
+  submissionDate     DateTime           @default(now())
+  reviewDate         DateTime?
+}
+
+model VehicleOrder {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  vin           String
+  lotNumber     String
+  sourceType    String
+  targetBid     Float
+  createdAt     DateTime       @default(now())
+  financials    Financials?
+  tracking      Tracking?
+  documentVault DocumentVault?
+}
+
+model Financials {
+  id                  String       @id @default(uuid())
+  orderId             String       @unique
+  order               VehicleOrder @relation(fields: [orderId], references: [id])
+  copartFees          Float        @default(0)
+  proxyBrokerFee      Float        @default(300)
+  domesticTransport   Float        @default(0)
+  oceanFreight        Float        @default(0)
+  dealerAccountFee    Float        @default(500)
+  totalLandedCost     Float        @default(0)
+}
+
+model Tracking {
+  id      String         @id @default(uuid())
+  orderId String         @unique
+  order   VehicleOrder   @relation(fields: [orderId], references: [id])
+  status  String         @default("AwaitingPickup")
+  updatedAt DateTime     @updatedAt
+}
+
+model DocumentVault {
+  id             String       @id @default(uuid())
+  orderId        String       @unique
+  order          VehicleOrder @relation(fields: [orderId], references: [id])
+  titleUrl       String?
+  billOfSaleUrl  String?
+  billOfLadingUrl String?
+  proformaInvoiceUrl String?
+}
+
+model RepairExpertAnalysis {
+  id             String   @id @default(uuid())
+  userId         String
+  vin            String?
+  description    String?
+  imageUrl       String?
+  analysisResult String   // JSON string of the AI analysis
+  createdAt      DateTime @default(now())
+}

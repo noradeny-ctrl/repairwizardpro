@@ -1,0 +1,259 @@
+
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Mail, Lock, User, LogIn, Loader2, Chrome, Sparkles, ArrowLeft } from 'lucide-react';
+import { useFirebase } from './FirebaseProvider';
+import { useTranslation } from 'react-i18next';
+
+interface AuthModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+type AuthView = 'login' | 'signup' | 'forgot-password';
+
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
+  const { t } = useTranslation();
+  const { login, loginWithEmail, registerWithEmail, resetPassword } = useFirebase();
+  const [view, setView] = useState<AuthView>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      if (view === 'login') {
+        await loginWithEmail(email, password);
+        setSuccess(t('auth.login_success', "Login successful! Welcome back."));
+        setTimeout(onClose, 1500);
+      } else if (view === 'signup') {
+        await registerWithEmail(email, password, name);
+        setSuccess(t('auth.signup_success', "Account created successfully! Welcome to the Wizard."));
+        setTimeout(onClose, 1500);
+      } else if (view === 'forgot-password') {
+        await resetPassword(email);
+        setSuccess(t('auth.reset_success', "Password reset email sent! Please check your inbox."));
+        setTimeout(() => setView('login'), 3000);
+      }
+    } catch (err: any) {
+      console.error("Auth error:", err);
+      let message = t('common.auth_error', "Authentication failed");
+      if (err.code === 'auth/invalid-credential') {
+        message = t('common.invalid_credentials', "Invalid email or password. If you don't have an account, please sign up first.");
+      } else if (err.code === 'auth/email-already-in-use') {
+        message = t('common.email_in_use', "This email is already in use. Please login instead.");
+      } else if (err.code === 'auth/weak-password') {
+        message = t('common.weak_password', "Password should be at least 6 characters.");
+      } else if (err.code === 'auth/invalid-email') {
+        message = t('common.invalid_email', "Please enter a valid email address.");
+      } else if (err.message) {
+        message = err.message;
+      }
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      await login();
+      setSuccess(t('auth.login_success', "Google login successful!"));
+      setTimeout(onClose, 1500);
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      setError(err.message || t('common.auth_error', "Google login failed"));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+          />
+          
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-md bg-[#0d1117] border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl z-[210]"
+          >
+            {/* Wizard Header */}
+            <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 p-8 border-b border-white/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Sparkles size={120} />
+              </div>
+              <div className="relative z-10 flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center border border-cyan-500/20 mb-4 shadow-xl shadow-cyan-500/10">
+                  <Sparkles className="text-cyan-400" size={32} />
+                </div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                  {view === 'login' ? t('auth.welcome_back') : view === 'signup' ? t('auth.join_wizard') : t('auth.reset_password')}
+                </h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">
+                  {view === 'login' ? t('auth.access_terminal') : view === 'signup' ? t('auth.start_journey') : t('auth.recover_keys')}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-colors text-slate-500 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8">
+              {view === 'forgot-password' && (
+                <button
+                  onClick={() => setView('login')}
+                  className="flex items-center gap-2 text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest mb-6 transition-colors"
+                >
+                  <ArrowLeft size={14} />
+                  {t('auth.back_to_login')}
+                </button>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl"
+                  >
+                    <p className="text-xs text-red-400 font-medium">{error}</p>
+                  </motion.div>
+                )}
+
+                {success && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl"
+                  >
+                    <p className="text-xs text-emerald-400 font-medium">{success}</p>
+                  </motion.div>
+                )}
+
+                {view === 'signup' && (
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                    <input
+                      required
+                      type="text"
+                      placeholder={t('auth.full_name')}
+                      className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-0 transition-all"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                  <input
+                    required
+                    type="email"
+                    placeholder={t('auth.email_address')}
+                    className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-0 transition-all"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+
+                {view !== 'forgot-password' && (
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-cyan-400 transition-colors" size={18} />
+                    <input
+                      required
+                      type="password"
+                      placeholder={t('auth.password')}
+                      className="w-full bg-black/40 border border-white/5 rounded-2xl py-4 pl-12 pr-4 text-sm text-white placeholder-slate-600 focus:border-cyan-500/50 focus:ring-0 transition-all"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {view === 'login' && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setView('forgot-password')}
+                      className="text-[10px] font-black text-slate-500 hover:text-cyan-400 uppercase tracking-widest transition-colors"
+                    >
+                      {t('auth.forgot_password')}
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 group disabled:opacity-50 shadow-lg shadow-cyan-500/20"
+                >
+                  {loading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <LogIn size={18} />
+                  )}
+                  <span className="uppercase tracking-widest text-[10px]">
+                    {view === 'login' ? t('auth.login') : view === 'signup' ? t('auth.signup') : t('auth.send_reset_link')}
+                  </span>
+                </button>
+              </form>
+
+              {view !== 'forgot-password' && (
+                <>
+                  <div className="relative my-8">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-white/5"></div>
+                    </div>
+                    <div className="relative flex justify-center text-[8px] uppercase font-black tracking-widest">
+                      <span className="bg-[#0d1117] px-4 text-slate-500">{t('auth.or_continue_with')}</span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-3 group disabled:opacity-50"
+                  >
+                    <Chrome size={18} />
+                    <span className="uppercase tracking-widest text-[10px]">Google</span>
+                  </button>
+
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={() => setView(view === 'login' ? 'signup' : 'login')}
+                      className="text-[10px] font-black text-slate-500 hover:text-cyan-400 uppercase tracking-widest transition-colors"
+                    >
+                      {view === 'login' ? t('auth.no_account_signup') : t('auth.have_account_login')}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+};

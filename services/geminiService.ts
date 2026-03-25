@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, RegionMode } from "../types";
+import { AnalysisResult, RegionMode, MarketAnalysisResult } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -17,6 +17,13 @@ INSTRUCTION ARCHITECTURE:
 - PRECISION: Specify exactly what to check (sounds, sights, feel).
 - COMPACTNESS: Exactly 5-10 steps. No fluff.
 - NO INTRO: Start immediately with the first instruction.
+
+OBD-II DIAGNOSTICS:
+- If an OBD-II code is provided (e.g., P0123, C0045, B0100, U0101):
+  - Identify the specific fault the code represents.
+  - Explain the most common causes.
+  - Provide a step-by-step diagnostic procedure to verify the fault.
+  - Suggest the most likely fix.
 
 LANGUAGE RULES:
 1. Mode WESTERN: Use elite, technical English.
@@ -50,7 +57,12 @@ export class WizardError extends Error {
 }
 
 export async function analyzeProblem(textInput: string, imageBase64: string | undefined, mode: RegionMode): Promise<AnalysisResult> {
-  const parts: any[] = [{ text: `Diagnostic Request: "${textInput}"` }];
+  const isOBDCode = /^[PCBU][0-9]{4}$/i.test(textInput.trim());
+  const diagnosticContext = isOBDCode 
+    ? `This is an OBD-II diagnostic code: ${textInput.toUpperCase()}. Provide specific technical details about this code.`
+    : `Diagnostic Request: "${textInput}"`;
+
+  const parts: any[] = [{ text: diagnosticContext }];
   
   if (imageBase64) {
     parts.push({

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnalysisResult, RegionMode, Partner } from '../types';
 import PartnerCard from './PartnerCard';
 
@@ -11,6 +12,7 @@ interface ResultViewProps {
 }
 
 const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommendedPartners = [] }) => {
+  const { t } = useTranslation();
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const isKurdish = result.isKurdish;
   const isArabic = mode === RegionMode.ARABIC;
@@ -26,56 +28,9 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
   const progress = Math.round((completedSteps.length / result.instructions.length) * 100);
 
   const getHeaderLabel = () => {
-    if (isArabic) {
-      if (result.resultType === 'TEST') return 'فحص';
-      if (result.resultType === 'LEARN') return 'تعلم';
-      return 'بروتوكول الإصلاح';
-    }
-    if (isKurdish) {
-      if (result.resultType === 'TEST') return 'پشکنین';
-      if (result.resultType === 'LEARN') return 'فێربوون';
-      return 'پڕۆتۆکۆلا چاککرنێ';
-    }
-    if (result.resultType === 'TEST') return 'DIAGNOSTIC PROTOCOL';
-    if (result.resultType === 'LEARN') return 'KNOWLEDGE TRANSFER';
-    return 'REPAIR SEQUENCE';
-  };
-
-  const getSubLabel = () => {
-    if (isArabic) return 'التشخيص الفني';
-    if (isKurdish) return 'پشکنینا تەکنیکی';
-    return 'TECHNICAL DIAGNOSIS';
-  };
-
-  const getToolsLabel = () => {
-    if (isArabic) return 'مجموعة الأدوات';
-    if (isKurdish) return 'کەلوپەلێن پێدڤی';
-    return 'TOOLKIT';
-  };
-
-  const getCorePartLabel = () => {
-    if (isArabic) return 'المكون الحيوي';
-    if (isKurdish) return 'پێکهاتەیا سەرەکی';
-    return 'CRITICAL COMPONENT';
-  };
-
-  const getPartnerLabel = () => {
-    // If we have recommended partners, use a more descriptive title
-    if (isArabic) return 'خبراء معتمدون لهذه المشكلة';
-    if (isKurdish) return 'هۆستایێن پشتڕاستکری بۆ ڤێ ئاریشێ';
-    return 'VERIFIED EXPERTS FOR THIS PROBLEM';
-  };
-
-  const getTipLabel = () => {
-    if (isArabic) return 'سر الخبير';
-    if (isKurdish) return 'نهێنیا هۆستای';
-    return "EXPERT INSIGHT";
-  };
-
-  const getResetLabel = () => {
-    if (isArabic) return 'بدء بروتوكول جديد';
-    if (isKurdish) return 'دەستپێکرنا پڕۆتۆکۆلەکا نوو';
-    return 'Initialize New Protocol';
+    if (result.resultType === 'TEST') return t('common.diagnostic_protocol');
+    if (result.resultType === 'LEARN') return t('common.knowledge_transfer');
+    return t('common.repair_sequence');
   };
 
   return (
@@ -83,7 +38,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
       <div className="px-6 py-6 flex justify-between items-center border-b border-white/5 bg-slate-900/40 backdrop-blur-ultra sticky top-0 z-50">
         <div className="flex flex-col">
           <h2 className="font-black text-[10px] tracking-[0.3em] uppercase text-cyan-500 mb-2">
-            {isArabic ? 'تقرير الخبير' : isKurdish ? 'ڕاپۆرتا هۆستای' : 'WIZARD REPORT'}
+            {t('common.wizard_report')}
           </h2>
           <div className="flex items-center gap-3">
              <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
@@ -99,7 +54,12 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
 
       <div className="flex-1 p-6 space-y-10 overflow-y-auto pb-48 hide-scrollbar">
         <section className="animate-slide-up">
-          <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.4em] mb-3">{getSubLabel()}</p>
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.4em]">{t('common.technical_diagnosis')}</p>
+            {/^[PCBU][0-9]{4}/i.test(result.diagnosis) && (
+              <span className="px-2 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded-md text-[8px] font-black text-amber-400 uppercase tracking-widest">OBD-II</span>
+            )}
+          </div>
           <h3 className="text-3xl font-black tracking-tighter leading-[1.1] text-white mb-5">{result.diagnosis}</h3>
           
           {result.safetyWarning && (
@@ -115,7 +75,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
           <section className="animate-slide-up space-y-6">
             <div className="flex items-center gap-3">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">{getPartnerLabel()}</p>
+              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em]">{t('common.verified_experts')}</p>
             </div>
             <div className="space-y-4">
               {recommendedPartners.map(p => (
@@ -126,7 +86,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
         )}
 
         <section className="bg-white/[0.03] border border-white/5 rounded-[2.25rem] p-6 shadow-inner animate-slide-up">
-           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-5">{getToolsLabel()}</p>
+           <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mb-5">{t('common.toolkit')}</p>
           <div className="flex flex-wrap gap-2.5">
             {result.toolsNeeded.map((tool, i) => (
               <span key={i} className="px-3.5 py-2 bg-cyan-500/5 border border-cyan-500/10 rounded-xl text-[10px] font-black text-cyan-300/80 uppercase tracking-wider flex items-center gap-2">
@@ -137,7 +97,7 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
         </section>
 
         <section className="bg-gradient-to-br from-slate-800/60 to-slate-900/60 rounded-[2.5rem] p-7 border border-white/10 shadow-2xl animate-slide-up">
-          <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] mb-4">{getCorePartLabel()}</p>
+          <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.4em] mb-4">{t('common.critical_component')}</p>
           <h4 className="text-2xl font-black text-white leading-tight mb-4">{result.partName}</h4>
         </section>
 
@@ -164,14 +124,14 @@ const ResultView: React.FC<ResultViewProps> = ({ result, mode, onReset, recommen
         </section>
 
         <section className="bg-gradient-to-br from-slate-900 to-black p-8 rounded-[2.5rem] border border-white/5 animate-slide-up">
-          <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.4em] mb-4">{getTipLabel()}</p>
+          <p className="text-[10px] font-black text-cyan-500 uppercase tracking-[0.4em] mb-4">{t('common.expert_insight')}</p>
           <p className="text-slate-200 text-sm leading-relaxed font-bold italic">"{result.tip}"</p>
         </section>
       </div>
       
       <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-[#0a0f1e] via-[#0a0f1e]/90 to-transparent pt-24">
          <button onClick={onReset} className="w-full py-6 bg-slate-800/80 backdrop-blur-xl border border-white/10 rounded-[2.25rem] text-[10px] font-black uppercase tracking-[0.3em] text-white shadow-2xl active:scale-95 transition-all">
-          {getResetLabel()}
+          {t('common.reset')}
          </button>
       </div>
     </div>

@@ -17,6 +17,9 @@ export interface AnalysisResult {
   tip: string;
   isKurdish: boolean;
   resultType: ResultType;
+  estimatedCost?: string;
+  recalls?: string[];
+  specifications?: { [key: string]: string };
 }
 
 export interface Coordinates {
@@ -57,6 +60,8 @@ export interface Partner {
 
 export interface AppState {
   userInput: string;
+  vin?: string;
+  isDeepScan: boolean;
   image?: string;
   isAnalyzing: boolean;
   result?: AnalysisResult;
